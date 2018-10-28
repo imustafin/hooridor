@@ -1,0 +1,52 @@
+name:                hooridor
+version:             0.1.0.0
+github:              "imustafin/hooridor"
+license:             BSD3
+author:              "Pinzaru Gheorghe, Ilgiz Mustafin, Bulat Maksudov"
+maintainer:          "g.pinzaru@innopolis.ru"
+copyright:           "2018 Innopolis University"
+
+extra-source-files:
+- README.md
+- ChangeLog.md
+
+# Metadata used when publishing your package
+# synopsis:            Short description of your package
+# category:            Web
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:         Please see the README on GitHub at <https://github.com/imustafin/hooridor#readme>
+
+ghc-options:
+- -Wall -fno-warn-type-defaults
+
+dependencies:
+- base >= 4.7 && < 5
+- gloss == 1.13.0.1
+
+library:
+  source-dirs: src
+
+executables:
+  hooridor-exe:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - hooridor
+
+tests:
+  hooridor-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - hooridor
