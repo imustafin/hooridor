@@ -11,7 +11,7 @@ data Player = Player
   , wallsLeft :: Int } deriving (Eq, Show)
 
 data Turn = MakeMove Cell
-  | PutWall Wall
+  | PutWall Wall deriving (Show)
 
 type WallPart = (Cell, Cell)
 type Wall = (WallPart, WallPart)
@@ -42,6 +42,14 @@ hasWallPart a (b, c) = wallPartEq a b || wallPartEq a c
 notInWall :: WallPart -> [Wall] -> Bool
 notInWall step walls' = not (any (hasWallPart step) walls')
 
+currentPlayer :: GameState -> Player
+currentPlayer state = head (playerList state)
+
+oneStep :: Cell -> Cell -> [Wall] -> Bool
+oneStep (x1, y1) (x2, y2) walls'
+      = abs (x1 - x2) + abs (y1 - y2) == 1
+      && notInWall ((x1, y1), (x2, y2)) walls'
+
 tryMove :: Turn -> GameState -> GameState
 tryMove (PutWall wall@((cell1,cell2), (cell3, cell4))) state
   | hasWalls && isInBounds && not intersect = newstate
@@ -59,18 +67,25 @@ tryMove (PutWall wall@((cell1,cell2), (cell3, cell4))) state
 
 tryMove (MakeMove (x, y)) state
   | cellInBound (x, y) && emptyCell &&
-    (canShortCutTo || oneStep (pos current) (x, y)) = newstate
+    (canShortCutTo || oneStep (pos current) (x, y) (walls state)) = newstate
   | otherwise = state
   where
     newstate = state {playerList = others ++ [current {pos = (x, y)}]}
     (current:others) = playerList state
     emptyCell = all (\p -> (x, y) /= pos p) (playerList state)
-    oneStep (x1, y1) (x2, y2)
-      = abs (x1 - x2) + abs (y1 - y2) == 1
-      && notInWall (pos current, (x, y)) (walls state)
-    canShortCutTo = any (\o -> oneStep (pos current) (pos o) &&
-                               oneStep (pos o) (x, y))
+    canShortCutTo = any (\o -> oneStep (pos current) (pos o) (walls state) &&
+                               oneStep (pos o) (x, y) (walls state))
                     others
+
+validMoves :: GameState -> [Turn]
+validMoves state = filter ((/= state) . (`tryMove` state)) allMoves
+  where
+    (currentX, currentY) = pos (currentPlayer state)
+    minX = currentX - 2
+    minY = currentY - 2
+    maxX = currentX + 2
+    maxY = currentY + 2
+    allMoves = concatMap (\x-> map (\y-> MakeMove (x,y)) [minY..maxY]) [minX..maxX]
 
 isWinner :: Player -> Bool
 isWinner player = winAt (color player) (pos player)
