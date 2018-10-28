@@ -6,7 +6,7 @@ data PlayerColor = Green | Yellow | Red | Orange
   deriving (Eq, Enum, Show)
 
 data Player = Player
-  { color     :: PlayerColor
+  { pcolor     :: PlayerColor
   , pos       :: Cell
   , wallsLeft :: Int } deriving (Eq, Show)
 
@@ -88,7 +88,7 @@ validMoves state = filter ((/= state) . (`tryMove` state)) allMoves
     allMoves = concatMap (\x-> map (\y-> MakeMove (x,y)) [minY..maxY]) [minX..maxX]
 
 isWinner :: Player -> Bool
-isWinner player = winAt (color player) (pos player)
+isWinner player = winAt ( pcolor player) (pos player)
   where
     winAt Green (8, _) = True
     winAt Yellow (0, _) = True
@@ -109,4 +109,4 @@ initialState playerCount = GameState
   , walls = []
   , winner = Nothing }
   where
-    initPlayer c p = Player {color = c, pos = p, wallsLeft = defaultWalls}
+    initPlayer c p = Player { pcolor = c, pos = p, wallsLeft = defaultWalls}
