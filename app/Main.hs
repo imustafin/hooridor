@@ -1,6 +1,6 @@
 module Main where
 
-import           MyProject
+import           Hooridor
 
 main :: IO ()
 main = run

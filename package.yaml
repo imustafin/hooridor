@@ -1,9 +1,9 @@
-name:                my-project
+name:                hooridor
 version:             0.1.0.0
-github:              "iu-haskell-fall-2018/my-project"
+github:              "imustafin/hooridor"
 license:             BSD3
-author:              "Nickolay Kudasov"
-maintainer:          "n.kudasov@innopolis.ru"
+author:              "Pinzaru Gheorghe, Ilgiz Mustafin, Bulat Maksudov"
+maintainer:          "g.pinzaru@innopolis.ru"
 copyright:           "2018 Innopolis University"
 
 extra-source-files:
@@ -17,7 +17,7 @@ extra-source-files:
 # To avoid duplicated efforts in documentation and dealing with the
 # complications of embedding Haddock markup inside cabal files, it is
 # common to point users to the README.md file.
-description:         Please see the README on GitHub at <https://github.com/iu-haskell-fall-2018/my-project#readme>
+description:         Please see the README on GitHub at <https://github.com/imustafin/hooridor#readme>
 
 ghc-options:
 - -Wall -fno-warn-type-defaults
@@ -29,7 +29,7 @@ library:
   source-dirs: src
 
 executables:
-  my-project-exe:
+  hooridor-exe:
     main:                Main.hs
     source-dirs:         app
     ghc-options:
@@ -37,10 +37,10 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - my-project
+    - hooridor
 
 tests:
-  my-project-test:
+  hooridor-test:
     main:                Spec.hs
     source-dirs:         test
     ghc-options:
@@ -48,4 +48,4 @@ tests:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - my-project
+    - hooridor
