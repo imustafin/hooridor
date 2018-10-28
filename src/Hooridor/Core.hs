@@ -72,6 +72,15 @@ tryMove (MakeMove (x, y)) state
                                oneStep (pos o) (x, y))
                     others
 
+isWinner :: Player -> Bool
+isWinner player = winAt (color player) (pos player)
+  where
+    winAt Green (8, _) = True
+    winAt Yellow (0, _) = True
+    winAt Red (_, 8) = True
+    winAt Orange (_, 0) = True
+    winAt _ _ = False
+
 defaultWalls :: Int
 defaultWalls = 5
 
@@ -81,7 +90,7 @@ initialState playerCount = GameState
     [(initPlayer Green (0,4))
     , (initPlayer Yellow (8,4))
     , (initPlayer Red (4,0))
-    , (initPlayer Orange (4,0))]
+    , (initPlayer Orange (4,8))]
   , walls = []
   , winner = Nothing }
   where
