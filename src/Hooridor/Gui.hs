@@ -2,11 +2,42 @@ module Hooridor.Gui where
 import Hooridor.Core
 import Graphics.Gloss
 import Graphics.Gloss.Interface.Pure.Game
+--import Graphics.Gloss.Interface.Pure.Color
 
+type Board = [(Cell,Color)]
+
+data GuiState = GuiState GameState Board
+
+
+build :: (Int,Int) -> (Float, Float)
+-- TODO: Generalize for size
+build (x,y) = ((fromIntegral (x-4)*50),(fromIntegral (y-4)*50))
+
+inverseBuild :: (Float, Float) -> (Int,Int)
+--Same as above
+inverseBuild (x,y) = (((round (x/50))+4),((round (y/50))+4))
+
+colorCell :: (Cell,Color) -> Board
+-- Same as above 
+colorCell ((x',y'),c) = [((x,y),(chooseColor x y)) 
+                            | x<-[0..8], y<-[0..8]]
+                                where
+                                    chooseColor x y 
+                                            | x==x' && y==y' = c
+                                            | otherwise = black
 
 -- | Respond to key events.
-handleEvents :: Event -> GameState -> GameState
-handleEvents _ = id
+handleEvents :: Event -> GuiState -> GuiState
+handleEvents (EventKey (MouseButton _) Down _ (x', y')) gs 
+                    = GuiState (tryMove (MakeMove (x,y)) gameState) board
+                    where 
+                        (GuiState gameState board) = gs
+                        (x,y) = inverseBuild (x',y')
+handleEvents (EventMotion (x',y')) gs = GuiState (gameState) (colorCell ((x,y),red))
+                    where 
+                        (GuiState gameState _) = gs
+                        (x,y) = inverseBuild (x',y')
+handleEvents _ z = z
 
 window :: Display
 window = InWindow "Hooridor? A?" (600, 600) (0, 0)
@@ -27,46 +58,36 @@ drawPlayer :: Player -> Picture
 drawPlayer p = translate x y (color (colorPlayer (pcolor p)) (circleSolid 15))
                 where 
                     (xr,yr) = pos p
-                    x = fromIntegral xr*50
-                    y = fromIntegral yr*50
+                    (x,y) = build (xr,yr)
 
-renderCell :: Cell -> Picture
-renderCell (x,y) = translate (fromIntegral x*50) (fromIntegral y*50) 
-                    ((rectangleSolid 40 40))
-
-drawBoard :: Int -> Picture
-drawBoard m = (pictures 
-            (map renderCell [ (x,y) | x<-[0..m], y<-[0..m]]) ) 
-             
-                
-                
-
-drawWall :: Wall -> Picture
-drawWall ((c1,c2),(c3,c4)) = translate nx1  ny1
-                                    (rectangleSolid 10 10)
-                    where
-                        (x1,y1) = c1 
-                        nx1 = (fromIntegral x1*50-25) 
-                        ny1 = (fromIntegral y1*50-25) 
-
-render :: Int -> GameState -> Picture
-render size state = translate x x (drawBoard size <>
-                pictures (map drawPlayer (playerList state)))
+renderCell :: (Cell,Color) -> Picture
+renderCell ((x,y),c) = translate x' y' 
+                    ((color c (rectangleSolid 40 40)))
                     where 
-                        x = fromIntegral (-(size*25))
-                        wall = (((0,1),(1,1)),((1,1),(2,2)))
+                        (x',y') = build (x,y)
 
-testCells :: Int -> Int -> [Cell]
-testCells n m = [ ((x,x)) | x <- [0..n] ] 
-update :: Float -> GameState -> GameState
+drawBoard :: Board -> Picture
+drawBoard board = (pictures 
+            (map renderCell board)) 
+             
+                                
+render :: Int -> GuiState -> Picture
+render size (GuiState gameState board) = translate x y (drawBoard board <>
+                pictures (map drawPlayer ( players)))
+                    where 
+                        (x,y) = (0,0) --build (-size,-size)
+                        players = playerList (gameState)
+                        
+-- Create new GuiState with board of given size                        
+initiateGame :: Int -> Int -> GuiState
+initiateGame pc size = GuiState (initialState pc) board
+                        where 
+                            board = [ ((x,y),black) | x<-[0..size], y<-[0..size]]
+
+
+update :: Float -> GuiState -> GuiState
 update _ = id
 
-testState :: GameState 
-testState = initialState 4
-
-testPlayer :: Player
-testPlayer =  Player { pcolor = Red, pos = (0,4), wallsLeft = 5}
-
 playGame :: Int-> Int -> IO ()
-playGame size pc = play window background fps (initialState pc) 
+playGame size pc = play window background fps (initiateGame pc size) 
             (render size) handleEvents update
