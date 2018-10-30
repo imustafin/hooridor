@@ -52,7 +52,8 @@ oneStep (x1, y1) (x2, y2) walls'
 
 tryMove :: Turn -> GameState -> GameState
 tryMove (PutWall wall@((cell1,cell2), (cell3, cell4))) state
-  | hasWalls && isInBounds && not intersect = newstate
+  | hasWalls && isInBounds && not intersect &&
+    playersCanReachGoal newState = newstate
   | otherwise = state
   where
     newstate = state {walls = wall : walls state
