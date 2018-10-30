@@ -15,7 +15,7 @@ data Turn = MakeMove Cell
 
 type WallPart = (Cell, Cell)
 type Wall = (WallPart, WallPart)
-data Board = Board [[Cell]]
+
 
 data GameState = GameState
   { playerList :: [Player]
