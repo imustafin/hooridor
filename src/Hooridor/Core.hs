@@ -111,13 +111,17 @@ playerCanReachGoal state player = dfs [] (pos player)
       where
       visited' = p : visited
 
+-- | In this GameState this Player standing on this Cell
+-- | to what cells can go in one step
 availablePositions :: GameState -> Player -> Cell -> [Cell]
 availablePositions state player p
   = map (pos . last . playerList . (\m -> tryMove m makeState))
       (validMoves makeState)
   where
+    -- | Make a state where it is this player's turn to move
     makeState = state { playerList = makePlayerList }
     makePlayerList = (player {pos=p}) : playerListWithoutThis
+    -- | All players without this player
     playerListWithoutThis
       = filter ((/= pcolor player) . pcolor) (playerList state)
 
