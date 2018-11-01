@@ -31,8 +31,8 @@ inverseBuild' (x, y)
                                   , ((row + 1, col), (row + 1, col + 1))))
   | addRow && addCol = Nothing
   where
-    x' = round x + 420 :: Int
-    y' = round y + 420 :: Int
+    y' = round x + 220 :: Int
+    x' = round y + 220 :: Int
     (xDiv, xMod) = divMod x' 50
     (yDiv, yMod) = divMod y' 50
     row = yDiv 
