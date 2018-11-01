@@ -8,6 +8,7 @@ type Board = [(Cell,Color)]
 
 data GuiState = GuiState GameState Board
 
+data CellOrWall = Cell' Cell | Wall' Wall deriving (Show)
 
 build :: (Int,Int) -> (Float, Float)
 -- TODO: Generalize for size
@@ -16,6 +17,28 @@ build (x,y) = ((fromIntegral (x-4)*50),(fromIntegral (y-4)*50))
 inverseBuild :: (Float, Float) -> (Int,Int)
 --Same as above
 inverseBuild (x,y) = (((round (x/50))+4),((round (y/50))+4))
+
+inverseBuild' :: (Float, Float) -> Maybe CellOrWall
+inverseBuild' (x, y)
+  | row < 0 || row > 8 || col < 0 || row > 8 = Nothing
+  | not addRow && not addCol = Just (Cell' (row, col))
+  | addRow && not addCol = Just (Wall'
+                                  (((row, col), (row + 1, col))
+                                  , ((row, col + 1), (row + 1, col + 1))))
+  | not addRow && addCol = Just (Wall'
+                                  (((row, col), (row, col + 1))
+                                  , ((row + 1, col), (row + 1, col + 1))))
+  | addRow && addCol = Nothing
+  where
+    x' = round x + 420 :: Int
+    y' = round y + 420 :: Int
+    (xDiv, xMod) = divMod x' 50
+    (yDiv, yMod) = divMod y' 50
+    row = yDiv 
+    addRow = yMod > 40
+    col = xDiv
+    addCol = xMod > 40
+
 
 colorCell :: (Cell,Color) -> Board
 -- Same as above 
