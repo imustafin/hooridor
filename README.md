@@ -1,6 +1,6 @@
 # Hooridor
 
-[![Build Status](https://travis-ci.org/imustafin/hooridor.svg?branch=master)](https://travis-ci.org/imustafin/hooridor)
+[![Build Status](https://travis-ci.com/imustafin/hooridor.svg?branch=master)](https://travis-ci.com/imustafin/hooridor)
 
 
 Hooridor is Quoridor in Haskell language
