@@ -23,7 +23,7 @@ data GameState = GameState
   , winner     :: Maybe PlayerColor } deriving (Eq, Show)
 
 cellInBound :: Cell -> Bool
-cellInBound (x, y) = 0 <= x && x <= 9 && 0 <= y && y <= 9
+cellInBound (x, y) = 0 <= x && x <= 8 && 0 <= y && y <= 8
 
 transposeWall :: Wall -> Wall
 transposeWall ((a, b), (c, d)) = ((a, c), (b, d))
