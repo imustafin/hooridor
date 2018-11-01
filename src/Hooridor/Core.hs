@@ -52,7 +52,8 @@ oneStep (x1, y1) (x2, y2) walls'
 
 tryMove :: Turn -> GameState -> GameState
 tryMove (PutWall wall@((cell1,cell2), (cell3, cell4))) state
-  | hasWalls && isInBounds && not intersect = newstate
+  | hasWalls && isInBounds && not intersect &&
+    playersCanReachGoal newstate = newstate
   | otherwise = state
   where
     newstate = state {walls = wall : walls state
@@ -88,13 +89,43 @@ validMoves state = filter ((/= state) . (`tryMove` state)) allMoves
     allMoves = concatMap (\x-> map (\y-> MakeMove (x,y)) [minY..maxY]) [minX..maxX]
 
 isWinner :: Player -> Bool
-isWinner player = winAt ( pcolor player) (pos player)
+isWinner player = winAt (pcolor player) (pos player)
   where
     winAt Green (8, _) = True
     winAt Yellow (0, _) = True
     winAt Red (_, 8) = True
     winAt Orange (_, 0) = True
     winAt _ _ = False
+
+playersCanReachGoal :: GameState -> Bool
+playersCanReachGoal state = all (playerCanReachGoal state) (playerList state)
+
+playerCanReachGoal :: GameState -> Player -> Bool
+playerCanReachGoal state player = dfs [] (pos player)
+  where
+    dfs visited p
+      | isWinner (player {pos=p}) = True
+      | elem p visited = False
+      | otherwise = any (\p' -> dfs visited' p')
+          (availablePositions state player p)
+      where
+      visited' = p : visited
+
+-- | In this GameState this Player standing on this Cell
+-- | to what cells can go in one step
+availablePositions :: GameState -> Player -> Cell -> [Cell]
+availablePositions state player p
+  = map (pos . last . playerList . (\m -> tryMove m makeState))
+      (validMoves makeState)
+  where
+    -- | Make a state where it is this player's turn to move
+    makeState = state { playerList = makePlayerList }
+    makePlayerList = (player {pos=p}) : playerListWithoutThis
+    -- | All players without this player
+    playerListWithoutThis
+      = filter ((/= pcolor player) . pcolor) (playerList state)
+
+
 
 defaultWalls :: Int
 defaultWalls = 5
