@@ -2,6 +2,7 @@ module Hooridor.Gui where
 import Hooridor.Core
 import Graphics.Gloss
 import Graphics.Gloss.Interface.Pure.Game
+import Data.List 
 --import Graphics.Gloss.Interface.Pure.Color
 
 type Board = [(Cell,Color)]
@@ -69,6 +70,8 @@ handleEvents (EventMotion (x',y')) gs = GuiState (gameState) (colorCell ((x,y),d
                         (GuiState gameState _) = gs
                         (x,y) = inverseBuild (x',y')
                         c = colorPlayer (pcolor (currentPlayer gameState))
+                        
+handleEvents (EventKey (Char 'r') _ _ _) _ = initiateGame 2 8                    
 handleEvents _ z = z
 
 window :: Display
@@ -130,18 +133,27 @@ drawWall c (ws1,ws2) = (drawWallSegment ws1 c)
 drawBoard :: Board -> Picture
 drawBoard board = (pictures 
             (map drawCell board)) 
-             
-                                
+
+drawVictoryScreen :: Color -> Picture
+drawVictoryScreen c = translate (-220) 0 (color (dark c) message)
+                                where 
+                                    message = (scale 0.5 1 (text "You have won!"))
 render :: Int -> GuiState -> Picture
-render size (GuiState gameState board) = translate x y (drawBoard board <>
-                pictures (map drawPlayer ( players)))          
-                <> pictures (map (drawWall black) (walls gameState))  
+render size (GuiState gameState board) =
+                case winner of
+                    Nothing ->  translate x y (drawBoard board <>
+                                pictures (map drawPlayer ( players)))          
+                                <> pictures (map (drawWall black) (walls gameState))  
+                    Just p -> drawVictoryScreen (colorPlayer (pcolor p))
                     where 
+                        winner = find isWinner players
                         (x,y) = (0,0) --build (-size,-size)
                         players = playerList (gameState)
                         testSegment1 = ((0,1),(1,1))
                         testSegment2 = ((0,0),(1,0))
                         testSegmentHorizontal = ((0,0),(0,1))
+
+
 
 -- Create new GuiState with board of given size                        
 initiateGame :: Int -> Int -> GuiState
