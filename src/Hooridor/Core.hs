@@ -109,6 +109,7 @@ takeTurn pwall@(PutWall wall) state
   | validTurn pwall state = newstate
   | otherwise = state
   where
+    PutWall wall = pwall
     newstate = state {walls = wall : walls state
                      , playerList = others ++ [current {wallsLeft = wallsLeft current - 1}]}
     (current:others) = playerList state
@@ -117,6 +118,7 @@ takeTurn mv@(MakeMove (x, y)) state
   | validTurn mv state = newstate
   | otherwise = state
   where
+    MakeMove (x, y) = move
     newstate = state {playerList = others ++ [current {pos = (x, y)}]}
     (current:others) = playerList state
     
