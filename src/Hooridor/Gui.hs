@@ -5,7 +5,10 @@ import Graphics.Gloss
 import Graphics.Gloss.Interface.Pure.Game
 import Data.List 
 
-type Board = [(Cell, Color)]
+type Board = Cell -> Color
+
+defaultCellColor :: Color
+defaultCellColor = black
 
 data GuiState = GuiState GameState Board
 
@@ -42,15 +45,12 @@ inverseBuild' (x, y)
     col = xDiv
     addCol = xMod > 40
 
-
--- Same as above 
-colorCell :: (Cell,Color) -> Board
-colorCell ((x',y'),c) = [((x,y),(chooseColor x y)) 
-  | x<-[0..8], y<-[0..8]]
+makeBoard :: Cell -> Color -> Board
+makeBoard cell color = f
   where
-    chooseColor x y 
-      | x==x' && y==y' = c
-      | otherwise = black
+    f c
+      | c == cell = color
+      | otherwise = defaultCellColor
 
 -- | Respond to key events.
 handleEvents :: Event -> GuiState -> GuiState
@@ -63,15 +63,13 @@ handleEvents (EventKey (MouseButton _) Down _ (x', y')) gs =
     (GuiState gameState board) = gs
     obj = inverseBuild' (x',y')
     (x,y) = inverseBuild (x',y')
-
 handleEvents (EventMotion (x',y')) gs
-  = GuiState (gameState) (colorCell ((x,y),dark c))
+  = GuiState (gameState) (makeBoard (x,y) (dark c))
   where 
     (GuiState gameState _) = gs
     (x,y) = inverseBuild (x',y')
     c = colorPlayer (pcolor (currentPlayer gameState))
-
-handleEvents (EventKey (Char 'r') _ _ _) _ = initiateGame 2 8                    
+handleEvents (EventKey (Char 'r') _ _ _) _ = initiateGame 2 8
 handleEvents _ z = z
 
 window :: Display
@@ -95,10 +93,11 @@ drawPlayer p = translate x y (color (colorPlayer (pcolor p)) (circleSolid 15))
     (xr,yr) = pos p
     (x,y) = build (xr,yr)
 
-drawCell :: (Cell,Color) -> Picture
-drawCell ((x,y),c) = translate x' y' ((color c (rectangleSolid 40 40)))
+drawCell :: Cell -> Board -> Picture
+drawCell cell board = translate x' y' ((color c (rectangleSolid 40 40)))
   where 
-    (x',y') = build (x,y)
+    c = board cell
+    (x',y') = build cell
 
 
 drawWallSegment :: WallPart -> Color -> Picture
@@ -130,7 +129,10 @@ drawWall c (ws1,ws2) = (drawWallSegment ws1 c)
     y = (y1+y2)/2
 
 drawBoard :: Board -> Picture
-drawBoard board = (pictures (map drawCell board)) 
+drawBoard board = pictures cellPictures
+  where
+    cellPictures
+      = concatMap (\x -> map (\y -> drawCell (x, y) board) [0..8]) [0..8]
 
 drawVictoryScreen :: Color -> Picture
 drawVictoryScreen c = translate (-220) 0 (color (dark c) message)
@@ -154,9 +156,9 @@ render size (GuiState gameState board) =
 
 -- Create new GuiState with board of given size                        
 initiateGame :: Int -> Int -> GuiState
-initiateGame pc size = GuiState (initialState pc) board
+initiateGame pc size = GuiState (initialState pc) allBlack
   where 
-    board = [ ((x,y),black) | x<-[0..size], y<-[0..size]]
+    allBlack _ = defaultCellColor
 
 newBoard :: Board
 newBoard = [ ((x,y),black) | x<-[0..8], y<-[0..8]]
