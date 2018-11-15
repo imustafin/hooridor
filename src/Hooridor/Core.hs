@@ -1,14 +1,17 @@
 module Hooridor.Core where
+import Data.HashSet (HashSet,fromList)
+import Data.Hashable
+import Data.Graph.AStar
 
 type Cell = (Int, Int)
 
 data PlayerColor = Green | Yellow | Red | Orange
-  deriving (Eq, Enum, Show)
+  deriving (Eq, Enum, Show,Ord)
 
 data Player = Player
   { pcolor     :: PlayerColor
   , pos       :: Cell
-  , wallsLeft :: Int } deriving (Eq, Show)
+  , wallsLeft :: Int } deriving (Eq, Show,Ord)
 
 data Turn = MakeMove Cell
   | PutWall Wall deriving (Show)
@@ -20,7 +23,10 @@ type Wall = (WallPart, WallPart)
 data GameState = GameState
   { playerList :: [Player]
   , walls      :: [Wall]
-  , winner     :: Maybe PlayerColor } deriving (Eq, Show)
+  , winner     :: Maybe PlayerColor } deriving (Eq, Show,Ord)
+
+instance Hashable GameState where
+  hashWithSalt s _ = s
 
 cellInBound :: Cell -> Bool
 cellInBound (x, y) = 0 <= x && x <= 8 && 0 <= y && y <= 8
@@ -50,21 +56,20 @@ oneStep (x1, y1) (x2, y2) walls'
       = abs (x1 - x2) + abs (y1 - y2) == 1
       && notInWall ((x1, y1), (x2, y2)) walls'
 
+-- | Perform one turn and give turn order to next player
 takeTurn :: Turn -> GameState -> GameState
-takeTurn pwall state
+takeTurn pwall@(PutWall wall) state
   | validTurn pwall state = newstate
   | otherwise = state
   where
-    PutWall wall = pwall
     newstate = state {walls = wall : walls state
                      , playerList = others ++ [current {wallsLeft = wallsLeft current - 1}]}
     (current:others) = playerList state
     
-takeTurn move state
-  | validTurn move state = newstate
+takeTurn mv@(MakeMove (x, y)) state
+  | validTurn mv state = newstate
   | otherwise = state
   where
-    MakeMove (x, y) = move
     newstate = state {playerList = others ++ [current {pos = (x, y)}]}
     (current:others) = playerList state
     
@@ -99,6 +104,15 @@ validTurn (PutWall wall) state =
           hasWalls = wallsLeft current > 0
           intersect = any (\w -> coincide w || wallEq w wall') (walls state)
 
+-- | Generate new state from movement, but don't pass turn
+move ::  GameState -> Turn -> GameState
+move state mv 
+  | validTurn mv state = newstate
+  | otherwise = state
+  where
+    MakeMove (x, y) = mv
+    newstate = state {playerList = (current {pos = (x, y)}):others}
+    (current:others) = playerList state
 
 -- | Get all possible moves 
 validMoves :: GameState -> [Turn]
@@ -124,7 +138,14 @@ playersCanReachGoal :: GameState -> Bool
 playersCanReachGoal state = all (playerCanReachGoal state) (playerList state)
 
 playerCanReachGoal :: GameState -> Player -> Bool
-playerCanReachGoal state player = dfs [] (pos player)
+playerCanReachGoal state player = 
+                    case path of
+                      Just a -> True
+                      Nothing -> False
+                    where 
+                      path = getShortestPath (giveTurn state player)
+
+playerCanReachGoalOld state player = dfs [] (pos player)
   where
     dfs visited p
       | isWinner (player {pos=p}) = True
@@ -134,21 +155,40 @@ playerCanReachGoal state player = dfs [] (pos player)
       where
       visited' = p : visited
 
+-- | Give turn to some player
+giveTurn :: GameState -> Player -> GameState
+giveTurn state p = putPlayerOn state p (pos p)
+
+
 -- | In this GameState this Player standing on this Cell
 -- | to what cells can go in one step
 availablePositions :: GameState -> Player -> Cell -> [Cell]
 availablePositions state player p
   = map (pos . last . playerList . (\m -> takeTurn m makeState))
       (validMoves makeState)
-  where
-    -- | Make a state where it is this player's turn to move
-    makeState = state { playerList = makePlayerList }
+      where
+        makeState = putPlayerOn state player p
+
+-- | Make a state where it is this player on given cell an it's his/her turn to move
+putPlayerOn :: GameState -> Player -> Cell -> GameState
+putPlayerOn state player p = state { playerList = makePlayerList }
+    where
     makePlayerList = (player {pos=p}) : playerListWithoutThis
     -- | All players without this player
     playerListWithoutThis
       = filter ((/= pcolor player) . pcolor) (playerList state)
 
-
+-- | Get shortest path to victory of current player
+getShortestPath :: GameState -> Maybe [GameState]
+getShortestPath start = aStar next cost heuristic won start
+        where
+         -- next :: GameState -> HashSet GameState
+          next a = fromList (map (move a) (validMoves a))
+          -- | Constant cost
+          cost _ _ = 1 
+          heuristic _ = 100 -- | distance to 
+          won = isWinner . currentPlayer
+          
 
 defaultWalls :: Int
 defaultWalls = 5
