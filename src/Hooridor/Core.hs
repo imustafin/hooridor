@@ -50,36 +50,59 @@ oneStep (x1, y1) (x2, y2) walls'
       = abs (x1 - x2) + abs (y1 - y2) == 1
       && notInWall ((x1, y1), (x2, y2)) walls'
 
-tryMove :: Turn -> GameState -> GameState
-tryMove (PutWall wall@((cell1,cell2), (cell3, cell4))) state
-  | hasWalls && isInBounds && not intersect &&
-    playersCanReachGoal newstate = newstate
+takeTurn :: Turn -> GameState -> GameState
+takeTurn pwall state
+  | validTurn pwall state = newstate
   | otherwise = state
   where
+    PutWall wall = pwall
     newstate = state {walls = wall : walls state
                      , playerList = others ++ [current {wallsLeft = wallsLeft current - 1}]}
     (current:others) = playerList state
-    isInBounds = all cellInBound [cell1, cell2, cell3, cell4]
-    wall' = transposeWall wall
-    coincide (part1, part2)
-      = hasWallPart part1 wall || hasWallPart part2 wall
-    hasWalls = wallsLeft current > 0
-    intersect = any (\w -> coincide w || wallEq w wall') (walls state)
-
-tryMove (MakeMove (x, y)) state
-  | cellInBound (x, y) && emptyCell &&
-    (canShortCutTo || oneStep (pos current) (x, y) (walls state)) = newstate
+    
+takeTurn move state
+  | validTurn move state = newstate
   | otherwise = state
   where
+    MakeMove (x, y) = move
     newstate = state {playerList = others ++ [current {pos = (x, y)}]}
     (current:others) = playerList state
-    emptyCell = all (\p -> (x, y) /= pos p) (playerList state)
-    canShortCutTo = any (\o -> oneStep (pos current) (pos o) (walls state) &&
-                               oneStep (pos o) (x, y) (walls state))
-                    others
+    
+-- | Checks if Turn is valid                  
+validTurn :: Turn -> GameState -> Bool
+validTurn (MakeMove cell) state = 
+          cellInBound (x, y) &&
+          emptyCell &&
+          (canShortCutTo 
+            || oneStep (pos current) (x, y) (walls state))
+        where 
+          (current:others) = playerList state
+          (x, y) = cell
+          emptyCell = all (\p -> (x, y) /= pos p) (playerList state)
+          canShortCutTo =
+                    any 
+                    (\o -> oneStep (pos current) (pos o) (walls state)
+                    && oneStep (pos o) (x, y) (walls state)) others
 
+validTurn (PutWall wall) state = 
+          hasWalls &&
+          isInBounds &&
+          not intersect &&
+          playersCanReachGoal (state {walls = wall : walls state} )
+        where
+          current = currentPlayer state
+          ((cell1,cell2), (cell3, cell4)) = wall
+          isInBounds = all cellInBound [cell1, cell2, cell3, cell4]
+          wall' = transposeWall wall
+          coincide (part1, part2)
+            = hasWallPart part1 wall || hasWallPart part2 wall
+          hasWalls = wallsLeft current > 0
+          intersect = any (\w -> coincide w || wallEq w wall') (walls state)
+
+
+-- | Get all possible moves 
 validMoves :: GameState -> [Turn]
-validMoves state = filter ((/= state) . (`tryMove` state)) allMoves
+validMoves state = filter ((/= state) . (`takeTurn` state)) allMoves
   where
     (currentX, currentY) = pos (currentPlayer state)
     minX = currentX - 2
@@ -115,7 +138,7 @@ playerCanReachGoal state player = dfs [] (pos player)
 -- | to what cells can go in one step
 availablePositions :: GameState -> Player -> Cell -> [Cell]
 availablePositions state player p
-  = map (pos . last . playerList . (\m -> tryMove m makeState))
+  = map (pos . last . playerList . (\m -> takeTurn m makeState))
       (validMoves makeState)
   where
     -- | Make a state where it is this player's turn to move

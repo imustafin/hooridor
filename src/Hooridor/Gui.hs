@@ -57,18 +57,21 @@ handleEvents (EventKey (MouseButton _) Down _ (x', y')) gs =
                     case obj of
                         Just b -> 
                             case b of 
-                                Cell' a-> GuiState (tryMove (MakeMove a) gameState) board
-                                Wall' a-> GuiState (tryMove (PutWall a) gameState) board
+                                Cell' a-> GuiState (takeTurn (MakeMove a) gameState) board
+                                Wall' a-> GuiState (takeTurn (PutWall a) gameState) board
                         Nothing -> gs
                     where 
                         (GuiState gameState board) = gs
                         obj = inverseBuild' (x',y')
                         (x,y) = inverseBuild (x',y')
 
-handleEvents (EventMotion (x',y')) gs = GuiState (gameState) (colorCell ((x,y),dark c))
+handleEvents (EventMotion (x',y')) gs = 
+                    case obj of
+                        Just (Cell' a)-> GuiState (gameState) (colorCell (a,dark c))
+                        otherwise -> GuiState (gameState) (newBoard)
                     where 
                         (GuiState gameState _) = gs
-                        (x,y) = inverseBuild (x',y')
+                        obj = inverseBuild' (x',y')
                         c = colorPlayer (pcolor (currentPlayer gameState))
                         
 handleEvents (EventKey (Char 'r') _ _ _) _ = initiateGame 2 8                    
@@ -123,7 +126,7 @@ segmentCoordinates (c1,c2) = (x,y)
 drawWall :: Color  -> Wall  -> Picture
 drawWall c (ws1,ws2) = (drawWallSegment ws1 c) 
                         <> (drawWallSegment ws2 c) 
-                        <> translate x y (color c (rectangleSolid 10 10))
+                        <> translate x y (color black (rectangleSolid 10 10))
                             where 
                                 (x1,y1) = segmentCoordinates ws1
                                 (x2,y2) = segmentCoordinates ws2
@@ -138,12 +141,13 @@ drawVictoryScreen :: Color -> Picture
 drawVictoryScreen c = translate (-220) 0 (color (dark c) message)
                                 where 
                                     message = (scale 0.5 1 (text "You have won!"))
+                                    
 render :: Int -> GuiState -> Picture
 render size (GuiState gameState board) =
                 case winner of
                     Nothing ->  translate x y (drawBoard board <>
                                 pictures (map drawPlayer ( players)))          
-                                <> pictures (map (drawWall black) (walls gameState))  
+                                <> pictures (map (drawWall red) (walls gameState))  
                     Just p -> drawVictoryScreen (colorPlayer (pcolor p))
                     where 
                         winner = find isWinner players
@@ -157,10 +161,11 @@ render size (GuiState gameState board) =
 
 -- Create new GuiState with board of given size                        
 initiateGame :: Int -> Int -> GuiState
-initiateGame pc size = GuiState (initialState pc) board
-                        where 
-                            board = [ ((x,y),black) | x<-[0..size], y<-[0..size]]
+initiateGame pc size = GuiState (initialState pc) newBoard
+                            
 
+newBoard :: Board
+newBoard = [ ((x,y),black) | x<-[0..8], y<-[0..8]]
 
 update :: Float -> GuiState -> GuiState
 update _ = id
