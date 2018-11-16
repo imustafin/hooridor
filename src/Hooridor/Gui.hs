@@ -3,6 +3,8 @@ import Hooridor.Core
 import Graphics.Gloss
 import Graphics.Gloss.Interface.Pure.Game
 import Data.List 
+import Hooridor.Ai
+
 --import Graphics.Gloss.Interface.Pure.Color
 
 type Board = [(Cell,Color)]
@@ -74,7 +76,10 @@ handleEvents (EventMotion (x',y')) gs =
                         obj = inverseBuild' (x',y')
                         c = colorPlayer (pcolor (currentPlayer gameState))
                         
-handleEvents (EventKey (Char 'r') _ _ _) _ = initiateGame 2 8                    
+handleEvents (EventKey (Char 'r') _ _ _) s = initiateGame playercount 8
+                            where
+                                (GuiState gs _) = s
+                                playercount = length (playerList gs)
 handleEvents _ z = z
 
 window :: Display
@@ -146,8 +151,9 @@ render :: Int -> GuiState -> Picture
 render size (GuiState gameState board) =
                 case winner of
                     Nothing ->  translate x y (drawBoard board <>
-                                pictures (map drawPlayer ( players)))          
-                                <> pictures (map (drawWall red) (walls gameState))  
+                                pictures (map drawPlayer ( players))) <>          
+                                pictures (map (drawWall red) (walls gameState)) <>
+                                translate 500 0 (drawScore gameState)
                     Just p -> drawVictoryScreen (colorPlayer (pcolor p))
                     where 
                         winner = find isWinner players
@@ -157,7 +163,8 @@ render size (GuiState gameState board) =
                         testSegment2 = ((0,0),(1,0))
                         testSegmentHorizontal = ((0,0),(0,1))
 
-
+drawScore :: GameState -> Picture
+drawScore state = color red (text (show (score state)))
 
 -- Create new GuiState with board of given size                        
 initiateGame :: Int -> Int -> GuiState
@@ -168,7 +175,13 @@ newBoard :: Board
 newBoard = [ ((x,y),black) | x<-[0..8], y<-[0..8]]
 
 update :: Float -> GuiState -> GuiState
-update _ = id
+update _ state = 
+            case inteligence player of
+                AI -> GuiState (aiPlayer gs) board
+                Human -> state
+            where
+                GuiState gs board = state
+                player = currentPlayer gs
 
 playGame :: Int-> Int -> IO ()
 playGame size pc = play window background fps (initiateGame pc size) 
