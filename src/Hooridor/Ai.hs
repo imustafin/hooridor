@@ -85,12 +85,17 @@ allTurns state = (generateWalls state) ++ (validMoves state)
 -- | Generate all possible wall placement turns
 generateWalls :: GameState -> [Turn]
 generateWalls state = possibleTurns
-            where
-                possibleTurns = filter (\a -> validTurn a state) (map PutWall possibleWalls)
-                possibleWalls = pairs (pairs board)
-
-board :: [Cell]
-board = [ (x,y) | x<-[0..8], y<-[0..8]]
-
-pairs :: [a] -> [(a, a)]
-pairs l = [(x,y) | (x:ys) <- tails l, y <- ys]
+  where
+    possibleTurns = filter (\a -> validTurn a state) allTurns
+    allTurns = map PutWall allWalls
+    allWalls = concatMap wallsNear allCoords
+    wallsNear :: Cell -> [Wall]
+    wallsNear c = concatMap (\a ->
+                    map (\b -> (a, b)) (wallSegmentsNear c))
+                  (wallSegmentsNear c)
+    wallSegmentsNear :: Cell -> [WallPart]
+    wallSegmentsNear a
+      = concatMap (\s -> map (\t -> (s, t)) (coordsNear a)) (coordsNear a)
+    coordsNear (a,b)
+      = concatMap (\x -> map (\y -> (x, y)) [b-2..b+2]) [a-2..a+2]
+    allCoords = concatMap (\x -> map (\y -> (x, y)) [0..8]) [0..8]
