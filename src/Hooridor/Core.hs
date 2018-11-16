@@ -55,7 +55,7 @@ areAdjacentCells (x1, y1) (x2, y2)
 
 
 isValidWallPart :: WallPart -> Bool
-isValidWallPart (c1@(x1, y1), c2@(x2, y2))
+isValidWallPart (c1, c2)
   = areAdjacentCells c1 c2 && cellInBound c1 && cellInBound c2
 
 isValidWall :: Wall -> Bool
