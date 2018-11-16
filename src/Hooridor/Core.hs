@@ -45,6 +45,16 @@ wallEq (a, b) (c, d)
 hasWallPart :: WallPart -> Wall -> Bool
 hasWallPart a (b, c) = wallPartEq a b || wallPartEq a c
 
+isValidWallPart :: WallPart -> Bool
+isValidWallPart ((x1, y1), (x2, y2)) =  abs (x1 - x2) + abs (y1 - y2) == 1
+
+isValidWall :: Wall -> Bool
+isValidWall ((c1, c2), (c3, c4))
+  = isValidWallPart (c1, c2)
+  && isValidWallPart (c3, c4)
+  && isValidWallPart (c1, c3)
+  && isValidWallPart (c2, c4)
+
 notInWall :: WallPart -> [Wall] -> Bool
 notInWall step walls' = not (any (hasWallPart step) walls')
 
@@ -73,7 +83,7 @@ takeTurn mv@(MakeMove (x, y)) state
     newstate = state {playerList = others ++ [current {pos = (x, y)}]}
     (current:others) = playerList state
     
--- | Checks if Turn is valid                  
+-- | Checks if Turn is valid
 validTurn :: Turn -> GameState -> Bool
 validTurn (MakeMove cell) state = 
           cellInBound (x, y) &&
@@ -93,6 +103,7 @@ validTurn (PutWall wall) state =
           hasWalls &&
           isInBounds &&
           not intersect &&
+          isValidWall wall &&
           playersCanReachGoal (state {walls = wall : walls state} )
         where
           current = currentPlayer state
