@@ -134,9 +134,11 @@ isWinner player = winAt (pcolor player) (pos player)
     winAt Orange (_, 0) = True
     winAt _ _ = False
 
+-- | Check if all players can reach final state
 playersCanReachGoal :: GameState -> Bool
 playersCanReachGoal state = all (playerCanReachGoal state) (playerList state)
 
+-- | Check if player can reach final state
 playerCanReachGoal :: GameState -> Player -> Bool
 playerCanReachGoal state player = 
                     case path of
