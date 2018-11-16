@@ -45,15 +45,22 @@ wallEq (a, b) (c, d)
 hasWallPart :: WallPart -> Wall -> Bool
 hasWallPart a (b, c) = wallPartEq a b || wallPartEq a c
 
+areAdjacentCells :: Cell -> Cell -> Bool
+areAdjacentCells (x1, y1) (x2, y2)
+  = abs (x1 - x2) + abs (y1 - y2) == 1
+
+
 isValidWallPart :: WallPart -> Bool
-isValidWallPart ((x1, y1), (x2, y2)) =  abs (x1 - x2) + abs (y1 - y2) == 1
+isValidWallPart (c1@(x1, y1), c2@(x2, y2))
+  = areAdjacentCells c1 c2 && cellInBound c1 && cellInBound c2
 
 isValidWall :: Wall -> Bool
 isValidWall ((c1, c2), (c3, c4))
-  = isValidWallPart (c1, c2)
-  && isValidWallPart (c3, c4)
-  && isValidWallPart (c1, c3)
-  && isValidWallPart (c2, c4)
+  = isValidWallPart (c1, c2) && isValidWallPart (c3, c4)
+  && ((areAdjacentCells c1 c3 && areAdjacentCells c2 c4)
+      || (areAdjacentCells c2 c3 && areAdjacentCells c1 c4))
+  && c1 /= c2 && c1 /= c3 && c1 /= c4
+  && c2 /= c3 && c2 /= c4 && c3 /= c4
 
 notInWall :: WallPart -> [Wall] -> Bool
 notInWall step walls' = not (any (hasWallPart step) walls')
