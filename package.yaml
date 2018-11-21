@@ -25,10 +25,13 @@ ghc-options:
 dependencies:
 - base >= 4.7 && < 5
 - gloss == 1.13.0.1
+- stm
 - unordered-containers
 - hashable
 - astar
-
+- network
+- containers
+- bytestring
 
 library:
   source-dirs: src

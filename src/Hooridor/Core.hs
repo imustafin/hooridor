@@ -81,7 +81,7 @@ areAdjacentCells (x1, y1) (x2, y2)
 
 
 isValidWallPart :: WallPart -> Bool
-isValidWallPart (c1@(x1, y1), c2@(x2, y2))
+isValidWallPart (c1, c2)
   = areAdjacentCells c1 c2 && cellInBound c1 && cellInBound c2
 
 isValidWall :: Wall -> Bool
@@ -112,31 +112,31 @@ takeTurn pwall@(PutWall wall) state
     newstate = state {walls = wall : walls state
                      , playerList = others ++ [current {wallsLeft = wallsLeft current - 1}]}
     (current:others) = playerList state
-    
+
 takeTurn mv@(MakeMove (x, y)) state
   | validTurn mv state = newstate
   | otherwise = state
   where
     newstate = state {playerList = others ++ [current {pos = (x, y)}]}
     (current:others) = playerList state
-    
+
 -- | Checks if Turn is valid
 validTurn :: Turn -> GameState -> Bool
-validTurn (MakeMove cell) state = 
+validTurn (MakeMove cell) state =
           cellInBound (x, y) &&
           emptyCell &&
-          (canShortCutTo 
+          (canShortCutTo
             || oneStep (pos current) (x, y) (walls state))
-        where 
+        where
           (current:others) = playerList state
           (x, y) = cell
           emptyCell = all (\p -> (x, y) /= pos p) (playerList state)
           canShortCutTo =
-                    any 
+                    any
                     (\o -> oneStep (pos current) (pos o) (walls state)
                     && oneStep (pos o) (x, y) (walls state)) others
 
-validTurn (PutWall wall) state = 
+validTurn (PutWall wall) state =
           hasWalls &&
           isInBounds &&
           not intersect &&
@@ -192,7 +192,7 @@ playerCanReachGoal state player =
                     case path of
                       Just a -> True
                       Nothing -> False
-                    where 
+                    where
                       path = getShortestPath (giveTurn state player)
 
 playerCanReachGoalOld state player = dfs [] (pos player)

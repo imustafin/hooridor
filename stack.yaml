@@ -38,7 +38,7 @@ packages:
 # Dependency packages to be pulled from upstream that are not in the resolver
 # using the same syntax as the packages field.
 # (e.g., acme-missiles-0.3)
-extra-deps: [gloss-1.13.0.1, gloss-rendering-1.13.0.2,astar-0.3.0.0]
+extra-deps: [gloss-1.13.0.1, gloss-rendering-1.13.0.2, astar-0.3.0.0, network-2.8.0.0, stm-2.5.0.0, containers-0.6.0.1, bytestring-0.10.8.2]
 
 # Override default flag values for local packages and extra-deps
 # flags: {}
