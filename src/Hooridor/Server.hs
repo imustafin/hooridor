@@ -13,42 +13,41 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Char8 as BS
 
-data Player = Player
-  { playerColor :: PlayerColor
-  , playerRecvChan :: TChan Turn
-  , playerSendChan :: TChan GameState}
+data Message = Message {userId:: Int, message:: GameState}
 
-data Message = Message {userId:: Int, message:: B.ByteString}
-type CicaChannel = TChan Message
+data SendMessage = SendMessage {senderId:: Int, turn:: Turn}
 
-consume :: Int -> Socket -> CicaChannel -> IO ()
+type GameChannel = TChan Message
+type TurnChannel = TChan SendMessage
+
+consume :: Int -> Socket -> GameChannel -> IO ()
 consume userId sock channel = do
-    msg <- try (recv sock 122) :: IO (Either IOException B.ByteString)
+    msg <- try (recv sock 1024) :: IO (Either IOException B.ByteString)
     case msg of
         Left error -> do
-            atomically $ writeTChan channel $ Message 0 (BS.pack ("User [" ++ (show userId) ++ "] left\n"))
-            pure ()
+          pure ()
         Right message -> do
-            atomically $ writeTChan channel $ Message userId message
-            consume userId sock channel
+          atomically $ writeTChan channel $ Message userId (takeTurn
+                                                            (read (BS.unpack message))
+                                                            (initialState 2))
+          consume userId sock channel
 
-produce :: Int -> Socket -> CicaChannel -> IO ()
+produce :: Int -> Socket -> GameChannel -> IO ()
 produce userId sock channel = forever $ do
     (Message senderId msg) <- atomically $ readTChan channel
-    if senderId == userId then
-        pure ()
-    else do
-        send sock (BS.pack ("[" ++ (show senderId)++ "]: " ++ (BS.unpack msg)))
-        pure ()
+    send sock (BS.pack (show msg))
+    pure ()
 
-
-acceptSocket :: Int -> Socket ->  CicaChannel -> IO ()
+acceptSocket :: Int -> Socket -> GameChannel -> IO ()
+acceptSocket n _ _ | n > 4 = return ()
 acceptSocket userId listeningSocket channel = do
     sock <- fst <$> accept listeningSocket
-    _ <- forkIO $ consume userId sock channel
     broadcastChannel <- atomically $ dupTChan channel
+
+    _ <- forkIO $ consume userId sock broadcastChannel
+
     _ <- forkIO $ produce userId sock broadcastChannel
-    atomically $ writeTChan channel $ Message 0 (BS.pack ("User [" ++ (show userId) ++ "] joined\n"))
+
     acceptSocket (userId + 1) listeningSocket channel
 
 createSocket :: PortNumber -> IO Socket
@@ -61,6 +60,6 @@ createSocket port = do
 
 startServer :: PortNumber -> IO ()
 startServer port = do
-    broadcastChannel <- atomically newBroadcastTChan :: IO CicaChannel
+    broadcastChannel <- atomically newBroadcastTChan :: IO GameChannel
     sock <- createSocket port
     acceptSocket 1 sock broadcastChannel

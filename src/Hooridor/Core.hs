@@ -6,15 +6,15 @@ import Data.Graph.AStar
 type Cell = (Int, Int)
 
 data PlayerColor = Green | Yellow | Red | Orange
-  deriving (Eq, Enum, Show,Ord)
+  deriving (Eq, Enum, Show, Read, Ord)
 
 data Player = Player
   { pcolor     :: PlayerColor
   , pos       :: Cell
-  , wallsLeft :: Int } deriving (Eq, Show,Ord)
+  , wallsLeft :: Int } deriving (Eq, Show, Read, Ord)
 
 data Turn = MakeMove Cell
-  | PutWall Wall deriving (Show)
+  | PutWall Wall deriving (Show, Read)
 
 type WallPart = (Cell, Cell)
 type Wall = (WallPart, WallPart)
@@ -23,7 +23,7 @@ type Wall = (WallPart, WallPart)
 data GameState = GameState
   { playerList :: [Player]
   , walls      :: [Wall]
-  , winner     :: Maybe PlayerColor } deriving (Eq, Show,Ord)
+  , winner     :: Maybe PlayerColor } deriving (Eq, Show, Read, Ord)
 
 instance Hashable GameState where
   hashWithSalt s _ = s
@@ -154,7 +154,7 @@ validTurn (PutWall wall) state =
 
 -- | Generate new state from movement, but don't pass turn
 move ::  GameState -> Turn -> GameState
-move state mv 
+move state mv
   | validTurn mv state = newstate
   | otherwise = state
   where
@@ -162,7 +162,7 @@ move state mv
     newstate = state {playerList = (current {pos = (x, y)}):others}
     (current:others) = playerList state
 
--- | Get all possible moves 
+-- | Get all possible move
 validMoves :: GameState -> [Turn]
 validMoves state = filter ((/= state) . (`takeTurn` state)) allMoves
   where
@@ -188,9 +188,9 @@ playersCanReachGoal state = all (playerCanReachGoal state) (playerList state)
 
 -- | Check if player can reach final state
 playerCanReachGoal :: GameState -> Player -> Bool
-playerCanReachGoal state player = 
-                    case path of
-                      Just a -> True
+playerCanReachGoal state player =
+                  case path of
+                      Just _ -> True
                       Nothing -> False
                     where
                       path = getShortestPath (giveTurn state player)
@@ -235,13 +235,15 @@ getShortestPath start = aStar next cost heuristic won start
          -- next :: GameState -> HashSet GameState
           next a = fromList (map (move a) (validMoves a))
           -- | Constant cost
-          cost _ _ = 1 
-          heuristic _ = 100 -- | distance to 
+          cost _ _ = 1
+          heuristic _ = 100 -- | distance to
           won = isWinner . currentPlayer
-          
 
 defaultWalls :: Int
 defaultWalls = 5
+
+initPlayer :: PlayerColor -> Cell -> Player
+initPlayer c p = Player { pcolor = c, pos = p, wallsLeft = defaultWalls}
 
 initialState :: Int -> GameState
 initialState playerCount = GameState
@@ -252,5 +254,3 @@ initialState playerCount = GameState
     , (initPlayer Orange (4,8))]
   , walls = []
   , winner = Nothing }
-  where
-    initPlayer c p = Player { pcolor = c, pos = p, wallsLeft = defaultWalls}
