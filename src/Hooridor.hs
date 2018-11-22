@@ -2,4 +2,4 @@ module Hooridor where
 import Hooridor.Gui
 
 run :: IO ()
-run = playGame 8 2
+run = playGame 2
