@@ -10,7 +10,8 @@ import Hooridor.Core
   , WallPart
   , PlayerColor (Red, Green, Yellow, Orange)
   , Player
-  , tryMove
+  , validMoves
+  , takeTurn
   , Turn (MakeMove, PutWall)
   , pcolor
   , currentPlayer
@@ -106,8 +107,8 @@ pointingAt (x, y)
 handleEvents :: Event -> GuiState -> GuiState
 handleEvents (EventKey (MouseButton _) Down _ (x', y')) gs =
   case pointingAt (x', y') of
-    Just (BoardCell a) -> GuiState (tryMove (MakeMove a) gameState) board
-    Just (BoardWall a) -> GuiState (tryMove (PutWall a) gameState) board
+    Just (BoardCell a) -> GuiState (takeTurn (MakeMove a) gameState) board
+    Just (BoardWall a) -> GuiState (takeTurn (PutWall a) gameState) board
     Nothing -> gs
   where
     (GuiState gameState board) = gs
@@ -120,7 +121,7 @@ handleEvents (EventMotion (x',y')) gs
     (GuiState gameState _) = gs
     c = colorPlayer (pcolor (currentPlayer gameState))
     wallHighlighting w
-      | tryMove (PutWall w) gameState /= gameState = drawWall hintWallColor w
+      | takeTurn (PutWall w) gameState /= gameState = drawWall hintWallColor w
       | otherwise = blank
 handleEvents (EventKey (Char 'r') _ _ _) _ = initiateGame 2
 handleEvents _ x = x
