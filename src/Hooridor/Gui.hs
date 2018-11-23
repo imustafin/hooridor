@@ -31,6 +31,12 @@ import Graphics.Gloss.Interface.Pure.Game
 
 --import Graphics.Gloss.Interface.Pure.Color
 
+type PlayType w
+  = Display -> Color -> Int
+  -> w -> (w -> Picture) -> (Event -> w -> w)
+  -> (Float -> w -> w) -> IO ()
+
+
 type Board = Cell -> Color
 
 normalCellColor :: Color
@@ -224,3 +230,30 @@ playGame pc
   = play window background fps
     (initiateGame pc) render
     handleEvents update
+
+
+data PlayerCountS a = PCMenu Int (Maybe a)
+
+withPlayerCountMenu :: (Int -> a) -> PlayType (PlayerCountS a) -> PlayType a
+withPlayerCountMenu
+  fromPc playA windowA backgroundA fpsA _ renderA handleA updateA
+  = playA windowA backgroundA fpsA initial' render' handle' update'
+  where
+    initial' = PCMenu 0 Nothing
+    render' (PCMenu pc Nothing) = text (show pc)
+    render' (PCMenu _ (Just a)) = renderA a
+    handle' (EventKey (SpecialKey KeyUp) Down _ _) (PCMenu pc Nothing)
+      = PCMenu (pc + 1) Nothing
+    handle' (EventKey (SpecialKey KeyEnter) _ _ _) (PCMenu pc Nothing)
+      = PCMenu pc (Just (fromPc pc))
+    handle' (EventKey (Char 'r') _ _ _) (PCMenu pc (Just _))
+      = PCMenu pc (Just (fromPc pc))
+    handle' e (PCMenu pc (Just a)) = PCMenu pc (Just (handleA e a))
+    handle' _ (PCMenu pc Nothing) = PCMenu pc Nothing
+    update' f (PCMenu pc (Just a)) = PCMenu pc (Just (updateA f a))
+    update' _ (PCMenu pc Nothing) = PCMenu pc Nothing
+
+
+runGui :: IO ()
+runGui = (withPlayerCountMenu initiateGame play)
+        window background fps (initiateGame 2) render handleEvents update
