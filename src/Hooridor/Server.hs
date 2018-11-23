@@ -14,7 +14,7 @@ import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Char8 as BS
 
 
-data Message = Message {userId:: Int, message:: GameState}
+data Message = Message {userId:: Int, message:: GameState} deriving (Show)
 
 data SendMessage = SendMessage {senderId:: Int, turn:: Turn}
 
@@ -23,39 +23,47 @@ type TurnChannel = TChan SendMessage
 
 type Config = TVar GameState
 
+-- | Receive a turn move from a player
 consume :: Int -> Socket -> GameChannel -> Config -> IO ()
-consume userId sock channel config = do
+consume player sock channel config = do
     msg <- try (recv sock 1024) :: IO (Either IOException B.ByteString)
     case msg of
         Left error -> do
           pure ()
         Right message -> do
+          currentState <- atomically $ readTVar config
           atomically $ modifyTVar config (\ c -> (takeTurn (read (BS.unpack message)) c))
           newState <- atomically $ readTVar config
-          atomically $ writeTChan channel $ Message userId newState
-          consume userId sock channel config
+          atomically $ writeTChan channel $ Message player newState
+          consume player sock channel config
 
+-- | Send current game state to all active players
 produce :: Int -> Socket -> GameChannel -> IO ()
-produce userId sock channel = forever $ do
+produce player sock channel = forever $ do
     (Message senderId msg) <- atomically $ readTChan channel
-    send sock (BS.pack (show msg))
+    send sock (BS.pack (show (Message player msg)))
     pure ()
 
+-- | Accept a socket connection for a player
+-- | Create one process for cunsuming messages form player and another to broadcast state
+-- | On connect bradcasts to all players a new state
+-- | Does not respond if more than 4 players are connected
 acceptSocket :: Int -> Socket -> GameChannel -> Config -> IO ()
-acceptSocket n _ _ _ | n > 4 = pure ()
-acceptSocket userId listeningSocket channel config = do
+acceptSocket n s gc c | n > 4 = acceptSocket n s gc c
+acceptSocket player listeningSocket channel config = do
     sock <- fst <$> accept listeningSocket
     broadcastChannel <- atomically $ dupTChan channel
 
-    _ <- forkIO $ consume userId sock broadcastChannel config
+    _ <- forkIO $ consume player sock broadcastChannel config
 
-    _ <- forkIO $ produce userId sock broadcastChannel
+    _ <- forkIO $ produce player sock broadcastChannel
 
-    atomically $ writeTVar config (initialState userId)
-    atomically $ writeTChan broadcastChannel $ Message userId (initialState userId)
+    atomically $ writeTVar config (initialState player)
+    atomically $ writeTChan broadcastChannel $ Message player (initialState player)
 
-    acceptSocket (userId + 1) listeningSocket channel config
+    acceptSocket (player + 1) listeningSocket channel config
 
+-- | Create a network server
 createSocket :: PortNumber -> IO Socket
 createSocket port = do
     sock <- socket AF_INET Stream 0
