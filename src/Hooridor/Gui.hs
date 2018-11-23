@@ -31,10 +31,12 @@ import Graphics.Gloss.Interface.Pure.Game
 
 --import Graphics.Gloss.Interface.Pure.Color
 
+type Renderer w = w -> Picture
+type Handler w = Event -> w -> w
+type Updater w = Float -> w -> w
+
 type PlayType w
-  = Display -> Color -> Int
-  -> w -> (w -> Picture) -> (Event -> w -> w)
-  -> (Float -> w -> w) -> IO ()
+  = Display -> Color -> Int -> w -> Renderer w -> Handler w -> Updater w -> IO ()
 
 
 type Board = Cell -> Color
@@ -234,26 +236,29 @@ playGame pc
 
 data PlayerCountS a = PCMenu Int (Maybe a)
 
-withPlayerCountMenu :: (Int -> a) -> PlayType (PlayerCountS a) -> PlayType a
 withPlayerCountMenu
-  fromPc playA windowA backgroundA fpsA _ renderA handleA updateA
-  = playA windowA backgroundA fpsA initial' render' handle' update'
+  :: (Int -> a) -> PlayType (PlayerCountS a)
+  -> Display -> Color -> Int -> (Renderer a) -> (Handler a) -> (Updater a)
+  -> IO ()
+withPlayerCountMenu
+  makeInitial play' window' background' fps' renderer handler updater
+  = play' window' background' fps' initial' render' handle' update'
   where
     initial' = PCMenu 0 Nothing
     render' (PCMenu pc Nothing) = text (show pc)
-    render' (PCMenu _ (Just a)) = renderA a
+    render' (PCMenu _ (Just a)) = renderer a
     handle' (EventKey (SpecialKey KeyUp) Down _ _) (PCMenu pc Nothing)
       = PCMenu (pc + 1) Nothing
     handle' (EventKey (SpecialKey KeyEnter) _ _ _) (PCMenu pc Nothing)
-      = PCMenu pc (Just (fromPc pc))
+      = PCMenu pc (Just (makeInitial pc))
     handle' (EventKey (Char 'r') _ _ _) (PCMenu pc (Just _))
-      = PCMenu pc (Just (fromPc pc))
-    handle' e (PCMenu pc (Just a)) = PCMenu pc (Just (handleA e a))
+      = PCMenu pc (Just (makeInitial pc))
+    handle' e (PCMenu pc (Just a)) = PCMenu pc (Just (handler e a))
     handle' _ (PCMenu pc Nothing) = PCMenu pc Nothing
-    update' f (PCMenu pc (Just a)) = PCMenu pc (Just (updateA f a))
+    update' f (PCMenu pc (Just a)) = PCMenu pc (Just (updater f a))
     update' _ (PCMenu pc Nothing) = PCMenu pc Nothing
 
 
 runGui :: IO ()
 runGui = (withPlayerCountMenu initiateGame play)
-        window background fps (initiateGame 2) render handleEvents update
+        window background fps render handleEvents update
