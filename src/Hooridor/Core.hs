@@ -245,12 +245,15 @@ defaultWalls = 5
 initPlayer :: PlayerColor -> Cell -> Player
 initPlayer c p = Player { pcolor = c, pos = p, wallsLeft = defaultWalls}
 
+players :: [Player]
+players =
+  [initPlayer Green (0,4)
+   , initPlayer Yellow (8,4)
+   , initPlayer Red (4,0)
+   , initPlayer Orange (4,8)]
+
 initialState :: Int -> GameState
 initialState playerCount = GameState
-  { playerList = take playerCount
-    [(initPlayer Green (0,4))
-    , (initPlayer Yellow (8,4))
-    , (initPlayer Red (4,0))
-    , (initPlayer Orange (4,8))]
+  { playerList = take playerCount players
   , walls = []
   , winner = Nothing }
