@@ -1,5 +1,5 @@
 module Hooridor where
-import Hooridor.Gui
+import Hooridor.Gui (runGui)
 
 run :: IO ()
-run = playGame 2
+run = runGui
