@@ -43,21 +43,6 @@ maxCol = size - 1
 size :: Int
 size = 9
 
-minRow :: Int
-minRow = 0
-
-minCol :: Int
-minCol = 0
-
-maxRow :: Int
-maxRow = size - 1
-
-maxCol :: Int
-maxCol = size - 1
-
-size :: Int
-size = 9
-
 cellInBound :: Cell -> Bool
 cellInBound (x, y) = 0 <= x && x <= 8 && 0 <= y && y <= 8
 
@@ -97,6 +82,9 @@ notInWall step walls' = not (any (hasWallPart step) walls')
 
 currentPlayer :: GameState -> Player
 currentPlayer state = head (playerList state)
+
+samePlayer :: Player -> Player -> Bool
+samePlayer p1 p2 = pcolor p1 == pcolor p2
 
 oneStep :: Cell -> Cell -> [Wall] -> Bool
 oneStep (x1, y1) (x2, y2) walls'

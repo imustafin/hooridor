@@ -13,7 +13,6 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Char8 as BS
 
-
 data Message = Message {userId:: Int, message:: GameState} deriving (Show)
 
 data SendMessage = SendMessage {senderId:: Int, turn:: Turn}
@@ -23,25 +22,27 @@ type TurnChannel = TChan SendMessage
 
 type Config = TVar GameState
 
+
 -- | Receive a turn move from a player
 consume :: Int -> Socket -> GameChannel -> Config -> IO ()
 consume player sock channel config = do
     msg <- try (recv sock 1024) :: IO (Either IOException B.ByteString)
     case msg of
-        Left error -> do
-          pure ()
+        Left _ -> pure ()
         Right message -> do
-          currentState <- atomically $ readTVar config
-          atomically $ modifyTVar config (\ c -> (takeTurn (read (BS.unpack message)) c))
-          newState <- atomically $ readTVar config
+          currentState <- readTVarIO config
+          if samePlayer (last (take player players)) (currentPlayer currentState) then
+            atomically $ modifyTVar config (takeTurn (read (BS.unpack message))) else
+            atomically $ writeTVar config currentState
+          newState <- readTVarIO config
           atomically $ writeTChan channel $ Message player newState
           consume player sock channel config
 
 -- | Send current game state to all active players
 produce :: Int -> Socket -> GameChannel -> IO ()
 produce player sock channel = forever $ do
-    (Message senderId msg) <- atomically $ readTChan channel
-    send sock (BS.pack (show (Message player msg)))
+    (Message _ msg) <- atomically $ readTChan channel
+    _ <- send sock (BS.pack (show (Message player msg)))
     pure ()
 
 -- | Accept a socket connection for a player

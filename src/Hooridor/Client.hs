@@ -34,8 +34,7 @@ withHandler
 withHandler channel f evt@(EventKey (MouseButton _) Down _ (x', y')) c@(ClientState universe cidVar) = do
   cid <- readTVarIO cidVar
   gs@(GuiState gameState _) <- readTVarIO universe
-  case (head (take cid players) == (currentPlayer gameState)) of
-    True ->
+  if samePlayer (last (take cid players)) (currentPlayer gameState) then
       case pointingAt (x', y') of
         Just (BoardCell a) -> do
           atomically $ writeTChan channel (MakeMove a)
@@ -44,25 +43,26 @@ withHandler channel f evt@(EventKey (MouseButton _) Down _ (x', y')) c@(ClientSt
           atomically $ writeTChan channel (PutWall w)
           atomically $ writeTVar universe (f evt gs)
         Nothing ->  atomically $ writeTVar universe (f evt gs)
-    False -> atomically $ writeTVar universe gs
+    else
+      atomically $ writeTVar universe gs
   return c
 
 -- | Show placeholder only if client is allowed
-withHandler _ f evt@(EventMotion (x',y')) c@(ClientState universe cidVar) = do
+withHandler _ f evt@(EventMotion _) c@(ClientState universe cidVar) = do
   cid <- readTVarIO cidVar
   gs@(GuiState gameState _) <- readTVarIO universe
-  case (head (take cid players) == (currentPlayer gameState)) of
-    True -> atomically $ writeTVar universe (f evt gs)
-    False -> atomically $ writeTVar universe gs
+  if samePlayer (last (take cid players)) (currentPlayer gameState) then
+    atomically $ writeTVar universe (f evt gs) else
+    atomically $ writeTVar universe gs
   return c
 
-withHandler _ f evt c@(ClientState universe cidVar) = do
+withHandler _ f evt c@(ClientState universe _) = do
   gs <- readTVarIO universe
   atomically $ writeTVar universe (f evt gs)
   return c
 
 updateClient :: Float -> ClientState -> IO ClientState
-updateClient _dt cs = return cs
+updateClient _dt = return
 
 -- | Render universe from CLient state using Gui renderer
 withRender :: (GuiState -> Picture) -> ClientState -> IO Picture
@@ -111,12 +111,12 @@ startClient :: String -> String -> IO ()
 startClient host port =  withSocketsDo $ do
   actionChannel <- atomically newTChan :: IO ActionChannel
   sock <- createSocket host port
-  universe <- newTVarIO $ initiateGame 4 8
+  universe <- newTVarIO $ initiateGame 4
   uid <- newTVarIO 0
   let init = ClientState universe uid
   acceptSocket sock uid universe actionChannel
   playIO window background fps
     init
-    (withRender (render 8))
+    (withRender render)
     (withHandler actionChannel handleEvents)
     updateClient
