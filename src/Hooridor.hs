@@ -4,7 +4,7 @@ import Hooridor.Core
 import Hooridor.Ai
 
 run :: IO ()
-run = testAI
+run = play
 
 play :: IO()
 play = playGame 8 2

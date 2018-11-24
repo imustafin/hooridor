@@ -12,14 +12,15 @@ data PlayerColor = Green | Yellow | Red | Orange
  
 instance Hashable PlayerColor
 
+data Inteligence = AI | Human 
+  deriving (Eq,Show,Ord)
+
 data Player = Player
   { pcolor     :: PlayerColor
   , pos       :: Cell
   , wallsLeft :: Int 
-  , inteligence :: Inteligence} deriving (Eq, Show,Ord)
+  , inteligence :: Inteligence } deriving (Eq, Show,Ord)
 
-data Inteligence = Human | AI deriving (Eq,Show,Ord)
- 
 data Turn = MakeMove Cell
   | PutWall Wall deriving (Show)
 
@@ -61,7 +62,7 @@ areAdjacentCells (x1, y1) (x2, y2)
 
 
 isValidWallPart :: WallPart -> Bool
-isValidWallPart (c1@(x1, y1), c2@(x2, y2))
+isValidWallPart (c1, c2)
   = areAdjacentCells c1 c2 && cellInBound c1 && cellInBound c2
 
 isValidWall :: Wall -> Bool
@@ -227,10 +228,10 @@ defaultWalls = 5
 initialState :: Int -> GameState
 initialState playerCount = GameState
   { playerList = take playerCount
-    [(initPlayer Green (0,4) Human)
-    , (initPlayer Yellow (8,4) AI)
-    , (initPlayer Red (4,0) Human)
-    , (initPlayer Orange (4,8) Human)]
+    [(initPlayer Green (0,4)) Human
+    , (initPlayer Yellow (8,4)) AI
+    , (initPlayer Red (4,0)) Human
+    , (initPlayer Orange (4,8)) Human]
   , walls = []
   , winner = Nothing }
   where

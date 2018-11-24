@@ -4,6 +4,8 @@ import Hooridor.Ai
 import Graphics.Gloss
 import Graphics.Gloss.Interface.Pure.Game
 import Data.List 
+import Hooridor.Ai
+
 --import Graphics.Gloss.Interface.Pure.Color
 
 type Board = [(Cell,Color)]
@@ -75,7 +77,10 @@ handleEvents (EventMotion (x',y')) gs =
                         obj = inverseBuild' (x',y')
                         c = colorPlayer (pcolor (currentPlayer gameState))
                         
-handleEvents (EventKey (Char 'r') _ _ _) _ = initiateGame 2 8                    
+handleEvents (EventKey (Char 'r') _ _ _) s = initiateGame playercount 8
+                            where
+                                (GuiState gs _) = s
+                                playercount = length (playerList gs)
 handleEvents _ z = z
 
 window :: Display
@@ -143,8 +148,7 @@ drawVictoryScreen c = translate (-220) 0 (color (dark c) message)
                                 where 
                                     message = (scale 0.5 1 (text "You have won!"))
 
-drawScore :: GameState -> Picture
-drawScore gs = scale 2 2 (color red (text (show (score gs))))
+
 render :: Int -> GuiState -> Picture
 render size (GuiState gameState board) =
                 case winner of
@@ -161,7 +165,8 @@ render size (GuiState gameState board) =
                         testSegment2 = ((0,0),(1,0))
                         testSegmentHorizontal = ((0,0),(0,1))
 
-
+drawScore :: GameState -> Picture
+drawScore state = color red (text (show (score state)))
 
 -- Create new GuiState with board of given size                        
 initiateGame :: Int -> Int -> GuiState
