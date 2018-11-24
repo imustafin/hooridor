@@ -7,7 +7,7 @@ import Hooridor.Core
   (GameState, Cell, Wall, WallPart, PlayerColor (Red, Green, Yellow, Orange)
   , Player, takeTurn, Turn (MakeMove, PutWall), pcolor
   , currentPlayer, pos, walls, isWinner, playerList, initialState, minRow
-  , maxRow, minCol, maxCol, size, validTurn)
+  , maxRow, minCol, maxCol, size, validTurn, wallsLeft)
 import Hooridor.Gui.AiMenuScreen
 
 -- |State of the GUI: current GameState and additional decoration to draw.
@@ -44,11 +44,7 @@ normalCellColor = black
 
 -- |Display color of walls
 normalWallColor :: Color
-normalWallColor = red
-
--- |Display color of wall hints
-hintWallColor :: Color
-hintWallColor = (light . light) normalWallColor
+normalWallColor = magenta
 
 -- |Display color of PlayerColors
 colorPlayer :: PlayerColor -> Color
@@ -130,14 +126,17 @@ handleEvents (EventKey (MouseButton _) Down _ (x', y')) gs =
     (GuiState gameState board) = gs
 handleEvents (EventMotion (x',y')) gs
   = case pointingAt (x', y') of
-    Just (BoardCell a) -> GuiState gameState (highlightCell a player)
+    Just (BoardCell c) -> GuiState gameState (cellHighlighting c)
     Just (BoardWall w) -> GuiState gameState (wallHighlighting w)
     Nothing -> GuiState gameState blank
   where
     (GuiState gameState _) = gs
     player = currentPlayer gameState
     wallHighlighting w
-      | validTurn (PutWall w) gameState = drawWall hintWallColor w
+      | validTurn (PutWall w) gameState = wallHint w player
+      | otherwise = blank
+    cellHighlighting c
+      | validTurn (MakeMove c) gameState = highlightCell c player
       | otherwise = blank
 handleEvents _ x = x
 
@@ -190,6 +189,10 @@ drawWall c (wp1, wp2)
     (x, y) = meanPoint (wallPartCenter wp1) (wallPartCenter wp2)
     margin = fromIntegral cellMargin
 
+-- |Draw a wall hint, translated to the correct position.
+wallHint :: Wall -> Player -> Picture
+wallHint w p = drawWall ((dark . colorPlayer . pcolor) p) w
+
 -- |Draw all cells normal, translated to the correct positions.
 drawBoard :: Picture
 drawBoard = pictures cellPictures
@@ -204,11 +207,27 @@ drawVictoryScreen p = translate (-220) 0 (color (dark c) message)
     c = colorPlayer (pcolor p)
     message = (scale 0.5 1 (text "You have won!"))
 
+-- |Picture telling how many walls this player has, translated on top
+-- of the board.
+wallsLeftPicture :: Player -> Picture
+wallsLeftPicture p = translate x y messagePicture <> playerIcon
+  where
+    (x, y) = cellCenter (maxCol `div` 4, maxRow + 1)
+    messageText = "Walls Left: " ++ (show (wallsLeft p))
+    messagePicture = scale 0.2 0.2 (text messageText)
+    playerIcon
+      = translate xShift yShift
+          (drawPlayer (p {pos = (maxCol `div` 4 - 1, maxRow + 1)}))
+    xShift = fromIntegral cellSize / 2
+    yShift = fromIntegral cellSize / 4
+
 -- |Draw current game state
 render :: GuiState -> Picture
 render (GuiState gameState decorations) =
   case winner of
-    Nothing -> drawBoard <> decorations
+    Nothing -> drawBoard
+            <> decorations
+            <> wallsLeftPicture (currentPlayer gameState)
             <> pictures (map drawPlayer (players))
             <> pictures (map (drawWall normalWallColor) (walls gameState))
     Just winnerPlayer -> drawVictoryScreen winnerPlayer
