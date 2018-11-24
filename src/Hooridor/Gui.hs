@@ -2,23 +2,12 @@ module Hooridor.Gui where
 
 import Graphics.Gloss
 import Graphics.Gloss.Interface.Pure.Game
-import Data.List
 import Hooridor.Core
-  (GameState, Cell, Wall, WallPart, PlayerColor (Red, Green, Yellow, Orange)
-  , Player, Inteligence (AI, Human), takeTurn, Turn (MakeMove, PutWall), pcolor
-  , currentPlayer, pos, walls, isWinner, playerList, initialState, minRow
-  , inteligence
-  , maxRow, minCol, maxCol, size, validTurn, wallsLeft)
-import Hooridor.Gui.AiMenuScreen
+import Hooridor.Gui.GameModeMenu
 import Hooridor.Ai
 
 -- |State of the GUI: current GameState and additional decoration to draw.
 data GuiState = GuiState GameState Picture
---import Graphics.Gloss.Interface.Pure.Color
-
-type Renderer w = w -> Picture
-type Handler w = Event -> w -> w
-type Updater w = Float -> w -> w
 
 -- |Board objects that can be pointed at by a mouse.
 data BoardObject = BoardCell Cell | BoardWall Wall
@@ -97,12 +86,12 @@ pointingAt (x, y)
       = Just (BoardCell (row, col))
   | higherThanCell && not righterThanCell
       = Just (BoardWall
-               ( ((row, col),     (row + 1, col))
-               , ((row, col - 1), (row + 1, col - 1))))
+         ( ((row, col),     (row + 1, col))
+         , ((row, col - 1), (row + 1, col - 1))))
   | not higherThanCell && righterThanCell
       = Just (BoardWall
-               ( ((row, col),     (row, col + 1))
-               , ((row + 1, col), (row + 1, col + 1))))
+         ( ((row, col),     (row, col + 1))
+         , ((row + 1, col), (row + 1, col + 1))))
   | otherwise = Nothing
   where
     (minX, minY) = cellCenter (minCol, minRow)
@@ -142,10 +131,14 @@ handleEvents (EventMotion (x',y')) gs
       | otherwise = blank
 handleEvents _ x = x
 
+-- |Player icon, not translated.
+playerIcon :: Player -> Picture
+playerIcon p = color (colorPlayer (pcolor p)) (circleSolid playerRadius)
+
+
 -- |Player icon translated to the cell position.
 drawPlayer :: Player -> Picture
-drawPlayer p
-  = translate x y (color (colorPlayer (pcolor p)) (circleSolid playerRadius))
+drawPlayer p = translate x y (playerIcon p)
   where
     (x, y) = cellCenter (pos p)
 
@@ -200,24 +193,26 @@ drawBoard :: Picture
 drawBoard = pictures cellPictures
   where
     cellPictures
-      = concatMap (\x -> map (\y -> drawDefaultCell (x, y)) [0..8]) [0..8]
+      = map drawDefaultCell allCells
+    allCells = [(x, y) | x <- [0..8], y <- [0..8]]
 
 -- |Draw victory screen for this player.
 drawVictoryScreen :: Player -> Picture
-drawVictoryScreen p = translate (-220) 0 (color (dark c) message)
+drawVictoryScreen p
+  = translate (-250) 0 (color (dark (colorPlayer (pcolor p))) message)
+  <> scale 5 5 (translate 0 (-25) (playerIcon p))
   where
-    c = colorPlayer (pcolor p)
-    message = (scale 0.5 1 (text "You have won!"))
+    message = (scale 0.5 1 (text "A winnar is you!"))
 
 -- |Picture telling how many walls this player has, translated on top
 -- of the board.
-wallsLeftPicture :: Player -> Picture
-wallsLeftPicture p = translate x y messagePicture <> playerIcon
+currentPlayerIndicator :: Player -> Picture
+currentPlayerIndicator p = translate x y messagePicture <> playerCircle
   where
     (x, y) = cellCenter (maxCol `div` 4, maxRow + 1)
     messageText = "Walls Left: " ++ (show (wallsLeft p))
     messagePicture = scale 0.2 0.2 (text messageText)
-    playerIcon
+    playerCircle
       = translate xShift yShift
           (drawPlayer (p {pos = (maxCol `div` 4 - 1, maxRow + 1)}))
     xShift = fromIntegral cellSize / 2
@@ -226,32 +221,32 @@ wallsLeftPicture p = translate x y messagePicture <> playerIcon
 -- |Draw current game state
 render :: GuiState -> Picture
 render (GuiState gameState decorations) =
-  case winner of
+  case winner gameState of
     Nothing -> drawBoard
             <> decorations
-            <> wallsLeftPicture (currentPlayer gameState)
+            <> currentPlayerIndicator (currentPlayer gameState)
             <> pictures (map drawPlayer (players))
             <> pictures (map (drawWall normalWallColor) (walls gameState))
     Just winnerPlayer -> drawVictoryScreen winnerPlayer
     where
-      winner = find isWinner players
       players = playerList (gameState)
 
 -- |Create new GuiState with this number of players.
-initiateGame :: Int -> GuiState
-initiateGame pc = GuiState (initialState pc) blank
+initiateGame :: GMMenuResult -> GuiState
+initiateGame (LocalGame pc) = GuiState (initialState pc) blank
+initiateGame EasyAi = GuiState (initialStateAi 1) blank
+initiateGame HardAi = GuiState (initialStateAi 2) blank
 
 -- |Update per time (nothing updates).
 update :: Float -> GuiState -> GuiState
-update _ state =
-        case inteligence player of
-            AI -> GuiState (aiPlayer gameState) board
-            Human -> state
-        where  
-            (GuiState gameState board) = state
-            player = currentPlayer gameState
+update _ state = case inteligence player of
+      (AI depth) -> GuiState (aiPlayer depth gameState) board
+      Human -> state
+  where
+    (GuiState gameState board) = state
+    player = currentPlayer gameState
 
 -- |Run the game starting with the menus.
 runGui :: IO ()
-runGui = (withAiMenuScreen (\_ -> initiateGame 2) play)
+runGui = (withGameModeMenu initiateGame play)
         window background fps render handleEvents update

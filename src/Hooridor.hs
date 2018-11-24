@@ -7,4 +7,4 @@ run :: IO ()
 run = runGui
 
 testAI :: IO()
-testAI = putStrLn (show (aiPlayer (initialState 2)))
+testAI = putStrLn (show (aiPlayer 2 (initialStateAi 2)))

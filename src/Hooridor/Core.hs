@@ -1,25 +1,31 @@
 {-# LANGUAGE DeriveGeneric #-}
 module Hooridor.Core where
-import Data.HashSet (HashSet,fromList)
+import Data.HashSet (HashSet, fromList)
 import Data.Hashable
 import Hooridor.Ai.AStar
 import GHC.Generics
+import Data.List (find)
 
 type Cell = (Int, Int)
 
 data PlayerColor = Green | Yellow | Red | Orange
   deriving (Eq, Enum, Show,Ord,Generic)
- 
+
 instance Hashable PlayerColor
 
-data Inteligence = AI | Human 
+-- |Who controls the player
+data Inteligence
+  = AI Int -- ^AI algorithm with this depth
+  | Human  -- ^Human controls from GUI
   deriving (Eq,Show,Ord)
 
 data Player = Player
-  { pcolor     :: PlayerColor
-  , pos       :: Cell
-  , wallsLeft :: Int 
-  , inteligence :: Inteligence } deriving (Eq, Show,Ord)
+  { pcolor      :: PlayerColor
+  , pos         :: Cell
+  , wallsLeft   :: Int
+  , inteligence :: Inteligence
+  }
+  deriving (Eq, Show,Ord)
 
 data Turn = MakeMove Cell
   | PutWall Wall deriving (Show)
@@ -27,14 +33,13 @@ data Turn = MakeMove Cell
 type WallPart = (Cell, Cell)
 type Wall = (WallPart, WallPart)
 
-
 data GameState = GameState
   { playerList :: [Player]
   , walls      :: [Wall]
-  , winner     :: Maybe PlayerColor } 
-  deriving (Eq, Show,Ord,Generic)
+  }
+  deriving (Eq, Show, Ord, Generic)
 
-instance Hashable GameState 
+instance Hashable GameState
 
 instance Hashable Player where
   hashWithSalt s p = (fst (pos p)) + s
@@ -108,31 +113,31 @@ takeTurn pwall@(PutWall wall) state
     newstate = state {walls = wall : walls state
                      , playerList = others ++ [current {wallsLeft = wallsLeft current - 1}]}
     (current:others) = playerList state
-    
+
 takeTurn mv@(MakeMove (x, y)) state
   | validTurn mv state = newstate
   | otherwise = state
   where
     newstate = state {playerList = others ++ [current {pos = (x, y)}]}
     (current:others) = playerList state
-    
+
 -- | Checks if Turn is valid
 validTurn :: Turn -> GameState -> Bool
-validTurn (MakeMove cell) state = 
+validTurn (MakeMove cell) state =
           cellInBound (x, y) &&
           emptyCell &&
-          (canShortCutTo 
+          (canShortCutTo
             || oneStep (pos current) (x, y) (walls state))
-        where 
+        where
           (current:others) = playerList state
           (x, y) = cell
           emptyCell = all (\p -> (x, y) /= pos p) (playerList state)
           canShortCutTo =
-                    any 
+                    any
                     (\o -> oneStep (pos current) (pos o) (walls state)
                     && oneStep (pos o) (x, y) (walls state)) others
 
-validTurn (PutWall wall) state = 
+validTurn (PutWall wall) state =
           hasWalls &&
           isInBounds &&
           not intersect &&
@@ -156,7 +161,7 @@ move state mv = newstate
     newstate = state {playerList = (current {pos = (x, y)}):others}
     (current:others) = playerList state
 
--- | Get all possible moves 
+-- | Get all possible moves
 validMoves :: GameState -> [Turn]
 validMoves state = filter (\a -> validTurn a state) allMoves
   where
@@ -182,15 +187,15 @@ playersCanReachGoal state = all (playerCanReachGoal state) (playerList state)
 
 -- | Check if player can reach final state
 playerCanReachGoal :: GameState -> Player -> Bool
-playerCanReachGoal state player = 
+playerCanReachGoal state player =
   let s = runAStar next cost heuristic won state
     in case end s of
       Nothing -> False
       Just e  -> True
   where
         next a = fromList (map (move a) (validMoves a))
-        cost _ _ = 1 
-        heuristic state = 0        
+        cost _ _ = 1
+        heuristic state = 0
         won = isWinner . currentPlayer
 
 playerCanReachGoalOld state player = dfs [] (pos player)
@@ -231,23 +236,36 @@ getShortestPath :: GameState -> Maybe [GameState]
 getShortestPath start = aStar next cost heuristic won start
         where
           next a = fromList (map (move a) (validMoves a))
-          cost _ _ = 1 
+          cost _ _ = 1
           heuristic state = 0
-            
+
           won = isWinner . currentPlayer
-          
+
+-- |Winner in this game state, if there is one.
+winner :: GameState -> Maybe Player
+winner state = find isWinner (playerList state)
 
 defaultWalls :: Int
 defaultWalls = 5
 
+-- |Initial state for a 2-player game,
+-- where the second is an AI algorithm with a given depth.
+initialStateAi :: Int -> GameState
+initialStateAi depth = withAi
+  where
+    normalState = initialState 2
+    [first, second] = playerList normalState
+    players = [first, second {inteligence = AI depth}]
+    withAi = normalState {playerList = players}
+
 initialState :: Int -> GameState
 initialState playerCount = GameState
   { playerList = take playerCount
-    [(initPlayer Green (0,4)) Human
-    , (initPlayer Yellow (8,4)) AI
-    , (initPlayer Red (4,0)) Human
-    , (initPlayer Orange (4,8)) Human]
+      [ (initPlayer Green (0,4)) Human
+      , (initPlayer Yellow (8,4)) Human
+      , (initPlayer Red (4,0)) Human
+      , (initPlayer Orange (4,8)) Human]
   , walls = []
-  , winner = Nothing }
+  }
   where
     initPlayer c p i = Player { pcolor = c, pos = p, wallsLeft = defaultWalls, inteligence = i}
