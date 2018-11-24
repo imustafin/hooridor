@@ -4,78 +4,94 @@ import Graphics.Gloss
 import Graphics.Gloss.Interface.Pure.Game
 import Data.List
 import Hooridor.Core
-  (GameState
-  , Cell
-  , Wall
-  , WallPart
-  , PlayerColor (Red, Green, Yellow, Orange)
-  , Player
-  , validMoves
-  , takeTurn
-  , Turn (MakeMove, PutWall)
-  , pcolor
-  , currentPlayer
-  , pos
-  , walls
-  , isWinner
-  , playerList
-  , initialState
-  , minRow
-  , maxRow
-  , minCol
-  , maxCol
-  , size
-  )
-import Hooridor.Ai
-import Graphics.Gloss
-import Graphics.Gloss.Interface.Pure.Game
+  (GameState, Cell, Wall, WallPart, PlayerColor (Red, Green, Yellow, Orange)
+  , Player, takeTurn, Turn (MakeMove, PutWall), pcolor
+  , currentPlayer, pos, walls, isWinner, playerList, initialState, minRow
+  , maxRow, minCol, maxCol, size, validTurn)
+import Hooridor.Gui.AiMenuScreen
 
+-- |State of the GUI: current GameState and additional decoration to draw.
+data GuiState = GuiState GameState Picture
 --import Graphics.Gloss.Interface.Pure.Color
 
 type Renderer w = w -> Picture
 type Handler w = Event -> w -> w
 type Updater w = Float -> w -> w
 
-type PlayType w
-  = Display -> Color -> Int -> w -> Renderer w -> Handler w -> Updater w -> IO ()
+-- |Board objects that can be pointed at by a mouse.
+data BoardObject = BoardCell Cell | BoardWall Wall
+  deriving (Show)
 
+-- Game Display Configuration
 
-type Board = Cell -> Color
+-- |Default Display to draw the game in.
+window :: Display
+window = InWindow "Hooridor" (600, 600) (0, 0)
 
+-- |Default window background color.
+background :: Color
+background = white
+
+-- |Default game frames per second value.
+fps :: Int
+fps = 60
+
+-- Game Colors
+
+-- |Display color of normal cells
 normalCellColor :: Color
 normalCellColor = black
 
+-- |Display color of walls
 normalWallColor :: Color
 normalWallColor = red
 
+-- |Display color of wall hints
 hintWallColor :: Color
 hintWallColor = (light . light) normalWallColor
 
--- |State of the GUI: current GameState and additional decoration to draw
-data GuiState = GuiState GameState Picture
+-- |Display color of PlayerColors
+colorPlayer :: PlayerColor -> Color
+colorPlayer Red = red
+colorPlayer Green = green
+colorPlayer Yellow = yellow
+colorPlayer Orange = orange
 
+-- Game Sizes.
+
+-- |Side of square cells in pixels.
 cellSize :: Int
 cellSize = 40
 
+-- |Radius of the player icon
+playerRadius :: Float
+playerRadius = fromIntegral cellSize * 0.35
+
+-- |Free space between cells in pixels.
 cellMargin :: Int
 cellMargin = 10
 
+-- |Distance between sides of two adjacent cells.
+--
+-- Equal to 'cellSize' plus 'cellMargin':
+-- prop> cellSize + cellMargin = cellSizeAndMargin
 cellSizeAndMargin :: Int
 cellSizeAndMargin = cellSize + cellMargin
 
 -- |Center of the Cell drawn on the screen.
 cellCenter :: Cell -> Point
-cellCenter (x,y) = ( (fromIntegral (x - halfBoard) * k)
-                   , (fromIntegral (y - halfBoard) * k))
+cellCenter (x,y)
+  = ( fromIntegral (x - halfBoard) * k
+    , fromIntegral (y - halfBoard) * k)
   where
     halfBoard = size `div` 2
     k = fromIntegral cellSizeAndMargin
 
--- |Board objects that can be pointed at by a mouse
-data BoardObject = BoardCell Cell | BoardWall Wall
-  deriving (Show)
+-- |WallPart center coordinates.
+wallPartCenter :: WallPart -> Point
+wallPartCenter (c1, c2) = meanPoint (cellCenter c1) (cellCenter c2)
 
--- |What board object is under the mouse cursor.
+-- |What board object is drawn at this point.
 pointingAt :: Point -> Maybe BoardObject
 pointingAt (x, y)
   | row < minRow || row > maxRow || col < minCol || col > maxCol = Nothing
@@ -89,7 +105,7 @@ pointingAt (x, y)
       = Just (BoardWall
                ( ((row, col),     (row, col + 1))
                , ((row + 1, col), (row + 1, col + 1))))
-  | otherwise = Nothing -- Why we need this?
+  | otherwise = Nothing
   where
     (minX, minY) = cellCenter (minCol, minRow)
     shiftX = round (minX - (fromIntegral cellSize / 2))
@@ -103,7 +119,7 @@ pointingAt (x, y)
     col = xDiv
     righterThanCell = xMod > cellSize
 
--- |Respond to key events.
+-- |Response to events.
 handleEvents :: Event -> GuiState -> GuiState
 handleEvents (EventKey (MouseButton _) Down _ (x', y')) gs =
   case pointingAt (x', y') of
@@ -114,110 +130,97 @@ handleEvents (EventKey (MouseButton _) Down _ (x', y')) gs =
     (GuiState gameState board) = gs
 handleEvents (EventMotion (x',y')) gs
   = case pointingAt (x', y') of
-    Just (BoardCell a) -> GuiState gameState (highlightCell a c)
+    Just (BoardCell a) -> GuiState gameState (highlightCell a player)
     Just (BoardWall w) -> GuiState gameState (wallHighlighting w)
     Nothing -> GuiState gameState blank
   where
     (GuiState gameState _) = gs
-    c = colorPlayer (pcolor (currentPlayer gameState))
+    player = currentPlayer gameState
     wallHighlighting w
-      | takeTurn (PutWall w) gameState /= gameState = drawWall hintWallColor w
+      | validTurn (PutWall w) gameState = drawWall hintWallColor w
       | otherwise = blank
-handleEvents (EventKey (Char 'r') _ _ _) _ = initiateGame 2
 handleEvents _ x = x
 
-window :: Display
-window = InWindow "Hooridor" (600, 600) (0, 0)
-
-background :: Color
-background = white
-
-fps :: Int
-fps = 60
-
-colorPlayer :: PlayerColor -> Color
-colorPlayer Red = red
-colorPlayer Green = green
-colorPlayer Yellow = yellow
-colorPlayer Orange = orange
-
+-- |Player icon translated to the cell position.
 drawPlayer :: Player -> Picture
-drawPlayer p = translate x y (color (colorPlayer (pcolor p)) (circleSolid 15))
+drawPlayer p
+  = translate x y (color (colorPlayer (pcolor p)) (circleSolid playerRadius))
   where
-    (xr, yr) = pos p
-    (x, y) = cellCenter (xr, yr)
+    (x, y) = cellCenter (pos p)
 
+-- |Colored cell translated to the cell position.
 drawCell :: Cell -> Color -> Picture
 drawCell cell c = translate x y ((color c (rectangleSolid side side)))
   where
     (x, y) = cellCenter cell
     side = fromIntegral cellSize
 
+-- |Cell with the default color translated to the cell position.
 drawDefaultCell :: Cell -> Picture
 drawDefaultCell cell = drawCell cell normalCellColor
 
-highlightCell :: Cell -> Color -> Picture
-highlightCell cell c = drawCell cell (dark c)
+-- |Cell highlighted for this player and translated to the cell position.
+highlightCell :: Cell -> Player -> Picture
+highlightCell cell p = drawCell cell ((dark . colorPlayer . pcolor) p)
 
-drawWallSegment :: WallPart -> Color -> Picture
-drawWallSegment wp col
-  | x1 == x2 = translate x y (color col (rectangleSolid side halfMargin))
-  | otherwise = translate x y (color col (rectangleSolid halfMargin side))
+-- |The point between two points.
+meanPoint :: Point -> Point -> Point
+meanPoint (x1, y1) (x2, y2) = ((x1 + x2) / 2, (y1 + y2) / 2)
+
+-- |Draw a wall part with this color, translated to the correct position.
+drawWallPart :: WallPart -> Color -> Picture
+drawWallPart wp@((x1, _), (x2, _)) col
+  = translate x y (color col (rectangleSolid width height))
   where
-    (c1, c2) = wp
-    (x1, _) = cellCenter c1
-    (x2, _) = cellCenter c2
-    (x, y) = segmentCoordinates wp
+    (width, height) =
+      if x1 == x2
+        then (side, halfMargin)
+        else (halfMargin, side)
+    (x, y) = wallPartCenter wp
     side = fromIntegral cellSize
     halfMargin = fromIntegral cellMargin / 2
 
-segmentCoordinates :: WallPart -> (Float, Float)
-segmentCoordinates (c1, c2) = (x, y)
-  where
-    (x1, y1) = cellCenter c1
-    (x2, y2) = cellCenter c2
-    x = (x1 + x2) / 2
-    y = (y1 + y2) / 2
-
-drawWall :: Color  -> Wall  -> Picture
-drawWall c (ws1, ws2) = (drawWallSegment ws1 c)
-  <> (drawWallSegment ws2 c)
+-- |Draw wall with this cololr, translated to the correct position.
+drawWall :: Color -> Wall -> Picture
+drawWall c (wp1, wp2)
+  =  (drawWallPart wp1 c)
+  <> (drawWallPart wp2 c)
   <> translate x y (color black (rectangleSolid margin margin))
   where
-    (x1, y1) = segmentCoordinates ws1
-    (x2, y2) = segmentCoordinates ws2
-    x = (x1 + x2) / 2
-    y = (y1 + y2) / 2
+    (x, y) = meanPoint (wallPartCenter wp1) (wallPartCenter wp2)
     margin = fromIntegral cellMargin
 
+-- |Draw all cells normal, translated to the correct positions.
 drawBoard :: Picture
 drawBoard = pictures cellPictures
   where
     cellPictures
       = concatMap (\x -> map (\y -> drawDefaultCell (x, y)) [0..8]) [0..8]
 
-drawVictoryScreen :: Color -> Picture
-drawVictoryScreen c = translate (-220) 0 (color (dark c) message)
+-- |Draw victory screen for this player.
+drawVictoryScreen :: Player -> Picture
+drawVictoryScreen p = translate (-220) 0 (color (dark c) message)
   where
+    c = colorPlayer (pcolor p)
     message = (scale 0.5 1 (text "You have won!"))
 
+-- |Draw current game state
 render :: GuiState -> Picture
 render (GuiState gameState decorations) =
   case winner of
-    Nothing ->  translate x y (drawBoard <> decorations <>
-        pictures (map drawPlayer (players)))
-        <> pictures (map (drawWall normalWallColor) (walls gameState))
-    Just p -> drawVictoryScreen (colorPlayer (pcolor p))
+    Nothing -> drawBoard <> decorations
+            <> pictures (map drawPlayer (players))
+            <> pictures (map (drawWall normalWallColor) (walls gameState))
+    Just winnerPlayer -> drawVictoryScreen winnerPlayer
     where
       winner = find isWinner players
-      (x,y) = (0,0) --build (-size,-size)
       players = playerList (gameState)
 
--- Create new GuiState with board of given size
+-- |Create new GuiState with this number of players.
 initiateGame :: Int -> GuiState
 initiateGame pc = GuiState (initialState pc) blank
 
--- Update per time
+-- |Update per time (nothing updates).
 update :: Float -> GuiState -> GuiState
 update _ state =
         case inteligence player of
@@ -227,39 +230,7 @@ update _ state =
             (GuiState gameState board) = state
             player = currentPlayer gameState
 
--- Start a game on a board with this size and for this number of players
-playGame :: Int -> IO ()
-playGame pc
-  = play window background fps
-    (initiateGame pc) render
-    handleEvents update
-
-
-data PlayerCountS a = PCMenu Int (Maybe a)
-
-withPlayerCountMenu
-  :: (Int -> a) -> PlayType (PlayerCountS a)
-  -> Display -> Color -> Int -> (Renderer a) -> (Handler a) -> (Updater a)
-  -> IO ()
-withPlayerCountMenu
-  makeInitial play' window' background' fps' renderer handler updater
-  = play' window' background' fps' initial' render' handle' update'
-  where
-    initial' = PCMenu 0 Nothing
-    render' (PCMenu pc Nothing) = text (show pc)
-    render' (PCMenu _ (Just a)) = renderer a
-    handle' (EventKey (SpecialKey KeyUp) Down _ _) (PCMenu pc Nothing)
-      = PCMenu (pc + 1) Nothing
-    handle' (EventKey (SpecialKey KeyEnter) _ _ _) (PCMenu pc Nothing)
-      = PCMenu pc (Just (makeInitial pc))
-    handle' (EventKey (Char 'r') _ _ _) (PCMenu pc (Just _))
-      = PCMenu pc (Just (makeInitial pc))
-    handle' e (PCMenu pc (Just a)) = PCMenu pc (Just (handler e a))
-    handle' _ (PCMenu pc Nothing) = PCMenu pc Nothing
-    update' f (PCMenu pc (Just a)) = PCMenu pc (Just (updater f a))
-    update' _ (PCMenu pc Nothing) = PCMenu pc Nothing
-
-
+-- |Run the game starting with the menus.
 runGui :: IO ()
-runGui = (withPlayerCountMenu initiateGame play)
+runGui = (withAiMenuScreen initiateGame play)
         window background fps render handleEvents update
