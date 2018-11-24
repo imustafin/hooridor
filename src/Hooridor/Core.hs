@@ -8,10 +8,14 @@ type Cell = (Int, Int)
 data PlayerColor = Green | Yellow | Red | Orange
   deriving (Eq, Enum, Show,Ord)
 
+data Inteligence = AI | Human 
+  deriving (Eq,Show,Ord)
+
 data Player = Player
   { pcolor     :: PlayerColor
   , pos       :: Cell
-  , wallsLeft :: Int } deriving (Eq, Show,Ord)
+  , wallsLeft :: Int 
+  , inteligence :: Inteligence } deriving (Eq, Show,Ord)
 
 data Turn = MakeMove Cell
   | PutWall Wall deriving (Show)
@@ -51,7 +55,7 @@ areAdjacentCells (x1, y1) (x2, y2)
 
 
 isValidWallPart :: WallPart -> Bool
-isValidWallPart (c1@(x1, y1), c2@(x2, y2))
+isValidWallPart (c1, c2)
   = areAdjacentCells c1 c2 && cellInBound c1 && cellInBound c2
 
 isValidWall :: Wall -> Bool
@@ -216,11 +220,11 @@ defaultWalls = 5
 initialState :: Int -> GameState
 initialState playerCount = GameState
   { playerList = take playerCount
-    [(initPlayer Green (0,4))
-    , (initPlayer Yellow (8,4))
-    , (initPlayer Red (4,0))
-    , (initPlayer Orange (4,8))]
+    [(initPlayer Green (0,4)) Human
+    , (initPlayer Yellow (8,4)) AI
+    , (initPlayer Red (4,0)) Human
+    , (initPlayer Orange (4,8)) Human]
   , walls = []
   , winner = Nothing }
   where
-    initPlayer c p = Player { pcolor = c, pos = p, wallsLeft = defaultWalls}
+    initPlayer c p i = Player { pcolor = c, pos = p, wallsLeft = defaultWalls, inteligence = i}
