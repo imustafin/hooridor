@@ -5,10 +5,12 @@ import Graphics.Gloss.Interface.Pure.Game
 import Data.List
 import Hooridor.Core
   (GameState, Cell, Wall, WallPart, PlayerColor (Red, Green, Yellow, Orange)
-  , Player, takeTurn, Turn (MakeMove, PutWall), pcolor
+  , Player, Inteligence (AI, Human), takeTurn, Turn (MakeMove, PutWall), pcolor
   , currentPlayer, pos, walls, isWinner, playerList, initialState, minRow
+  , inteligence
   , maxRow, minCol, maxCol, size, validTurn, wallsLeft)
 import Hooridor.Gui.AiMenuScreen
+import Hooridor.Ai
 
 -- |State of the GUI: current GameState and additional decoration to draw.
 data GuiState = GuiState GameState Picture
