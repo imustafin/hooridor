@@ -232,5 +232,5 @@ update _ state =
 
 -- |Run the game starting with the menus.
 runGui :: IO ()
-runGui = (withAiMenuScreen initiateGame play)
+runGui = (withAiMenuScreen (\_ -> initiateGame 2) play)
         window background fps render handleEvents update
