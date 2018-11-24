@@ -1,5 +1,6 @@
 module Hooridor.Gui where
 import Hooridor.Core
+import Hooridor.Ai
 import Graphics.Gloss
 import Graphics.Gloss.Interface.Pure.Game
 import Data.List 
@@ -141,13 +142,16 @@ drawVictoryScreen :: Color -> Picture
 drawVictoryScreen c = translate (-220) 0 (color (dark c) message)
                                 where 
                                     message = (scale 0.5 1 (text "You have won!"))
-                                    
+
+drawScore :: GameState -> Picture
+drawScore gs = scale 2 2 (color red (text (show (score gs))))
 render :: Int -> GuiState -> Picture
 render size (GuiState gameState board) =
                 case winner of
                     Nothing ->  translate x y (drawBoard board <>
                                 pictures (map drawPlayer ( players)))          
                                 <> pictures (map (drawWall red) (walls gameState))  
+                                <> drawScore gameState
                     Just p -> drawVictoryScreen (colorPlayer (pcolor p))
                     where 
                         winner = find isWinner players
@@ -168,7 +172,13 @@ newBoard :: Board
 newBoard = [ ((x,y),black) | x<-[0..8], y<-[0..8]]
 
 update :: Float -> GuiState -> GuiState
-update _ = id
+update _ state =
+        case inteligence player of
+            AI -> GuiState (aiPlayer gameState) board
+            Human -> state
+        where  
+            (GuiState gameState board) = state
+            player = currentPlayer gameState
 
 playGame :: Int-> Int -> IO ()
 playGame size pc = play window background fps (initiateGame pc size) 
