@@ -1,12 +1,16 @@
+{-# LANGUAGE DeriveGeneric #-}
 module Hooridor.Core where
 import Data.HashSet (HashSet,fromList)
 import Data.Hashable
-import Data.Graph.AStar
+import Hooridor.Ai.AStar
+import GHC.Generics
 
 type Cell = (Int, Int)
 
 data PlayerColor = Green | Yellow | Red | Orange
-  deriving (Eq, Enum, Show,Ord)
+  deriving (Eq, Enum, Show,Ord,Generic)
+ 
+instance Hashable PlayerColor
 
 data Inteligence = AI | Human 
   deriving (Eq,Show,Ord)
@@ -27,10 +31,13 @@ type Wall = (WallPart, WallPart)
 data GameState = GameState
   { playerList :: [Player]
   , walls      :: [Wall]
-  , winner     :: Maybe PlayerColor } deriving (Eq, Show,Ord)
+  , winner     :: Maybe PlayerColor } 
+  deriving (Eq, Show,Ord,Generic)
 
-instance Hashable GameState where
-  hashWithSalt s _ = s
+instance Hashable GameState 
+
+instance Hashable Player where
+  hashWithSalt s p = (fst (pos p)) + s
 
 cellInBound :: Cell -> Bool
 cellInBound (x, y) = 0 <= x && x <= 8 && 0 <= y && y <= 8
@@ -128,9 +135,7 @@ validTurn (PutWall wall) state =
 
 -- | Generate new state from movement, but don't pass turn
 move ::  GameState -> Turn -> GameState
-move state mv 
-  | validTurn mv state = newstate
-  | otherwise = state
+move state mv = newstate
   where
     MakeMove (x, y) = mv
     newstate = state {playerList = (current {pos = (x, y)}):others}
@@ -138,7 +143,7 @@ move state mv
 
 -- | Get all possible moves 
 validMoves :: GameState -> [Turn]
-validMoves state = filter ((/= state) . (`takeTurn` state)) allMoves
+validMoves state = filter (\a -> validTurn a state) allMoves
   where
     (currentX, currentY) = pos (currentPlayer state)
     minX = currentX - 2
@@ -163,11 +168,15 @@ playersCanReachGoal state = all (playerCanReachGoal state) (playerList state)
 -- | Check if player can reach final state
 playerCanReachGoal :: GameState -> Player -> Bool
 playerCanReachGoal state player = 
-                    case path of
-                      Just a -> True
-                      Nothing -> False
-                    where 
-                      path = getShortestPath (giveTurn state player)
+  let s = runAStar next cost heuristic won state
+    in case end s of
+      Nothing -> False
+      Just e  -> True
+  where
+        next a = fromList (map (move a) (validMoves a))
+        cost _ _ = 1 
+        heuristic state = 0        
+        won = isWinner . currentPlayer
 
 playerCanReachGoalOld state player = dfs [] (pos player)
   where
@@ -206,11 +215,10 @@ putPlayerOn state player p = state { playerList = makePlayerList }
 getShortestPath :: GameState -> Maybe [GameState]
 getShortestPath start = aStar next cost heuristic won start
         where
-         -- next :: GameState -> HashSet GameState
           next a = fromList (map (move a) (validMoves a))
-          -- | Constant cost
           cost _ _ = 1 
-          heuristic _ = 100 -- | distance to 
+          heuristic state = 0
+            
           won = isWinner . currentPlayer
           
 

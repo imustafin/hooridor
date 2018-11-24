@@ -28,7 +28,8 @@ dependencies:
 - unordered-containers
 - hashable
 - astar
-
+- psqueues
+- parallel
 
 library:
   source-dirs: src
@@ -38,6 +39,7 @@ executables:
     main:                Main.hs
     source-dirs:         app
     ghc-options:
+    - -O2
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
