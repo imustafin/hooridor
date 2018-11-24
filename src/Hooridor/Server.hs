@@ -28,7 +28,7 @@ consume :: Int -> Socket -> GameChannel -> Config -> IO ()
 consume player sock channel config = do
     msg <- try (recv sock 1024) :: IO (Either IOException B.ByteString)
     case msg of
-        Left _ -> pure ()
+        Left _ -> pure()
         Right message -> do
           currentState <- readTVarIO config
           if samePlayer (last (take player players)) (currentPlayer currentState) then

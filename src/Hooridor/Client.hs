@@ -47,7 +47,7 @@ withHandler channel f evt@(EventKey (MouseButton _) Down _ (x', y')) c@(ClientSt
       atomically $ writeTVar universe gs
   return c
 
--- | Show placeholder only if client is allowed
+-- | Show placeholder only if client is allowed to move
 withHandler _ f evt@(EventMotion _) c@(ClientState universe cidVar) = do
   cid <- readTVarIO cidVar
   gs@(GuiState gameState _) <- readTVarIO universe
@@ -75,7 +75,7 @@ consume :: Socket -> ClientId -> GameUniverse -> IO ()
 consume sock cid channel = do
    msg <- try (recv sock 1024) :: IO (Either IOException B.ByteString)
    case msg of
-        Left error -> do
+        Left _ ->
           pure ()
         Right message -> do
           let (Message uid gs) = (read (BS.unpack message))
