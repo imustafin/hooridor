@@ -9,7 +9,8 @@ import Data.List (find)
 type Cell = (Int, Int)
 
 data PlayerColor = Green | Yellow | Red | Orange
-  deriving (Eq, Enum, Show, Ord, Generic, Read)
+<<<<<<< HEAD
+  deriving (Eq, Enum, Show,Ord,Generic)
 
 instance Hashable PlayerColor
 
@@ -25,7 +26,15 @@ data Player = Player
   , wallsLeft   :: Int
   , inteligence :: Inteligence
   }
-  deriving (Eq, Show, Read, Ord)
+  deriving (Eq, Show,Ord)
+=======
+  deriving (Eq, Enum, Show, Read, Ord)
+
+data Player = Player
+  { pcolor     :: PlayerColor
+  , pos       :: Cell
+  , wallsLeft :: Int } deriving (Eq, Show, Read, Ord)
+>>>>>>> 26c33685eb459f908c83aad7f8827d4b203a4e2c
 
 data Turn = MakeMove Cell
   | PutWall Wall deriving (Show, Read)
@@ -36,13 +45,32 @@ type Wall = (WallPart, WallPart)
 data GameState = GameState
   { playerList :: [Player]
   , walls      :: [Wall]
+<<<<<<< HEAD
   }
-  deriving (Eq, Show, Read, Ord, Generic)
+  deriving (Eq, Show, Ord, Generic)
 
 instance Hashable GameState
 
 instance Hashable Player where
   hashWithSalt s p = (fst (pos p)) + s
+=======
+  , winner     :: Maybe PlayerColor } deriving (Eq, Show, Read, Ord)
+>>>>>>> 26c33685eb459f908c83aad7f8827d4b203a4e2c
+
+minRow :: Int
+minRow = 0
+
+minCol :: Int
+minCol = 0
+
+maxRow :: Int
+maxRow = size - 1
+
+maxCol :: Int
+maxCol = size - 1
+
+size :: Int
+size = 9
 
 minRow :: Int
 minRow = 0
@@ -158,15 +186,23 @@ validTurn (PutWall wall) state =
 
 -- | Generate new state from movement, but don't pass turn
 move ::  GameState -> Turn -> GameState
+<<<<<<< HEAD
+move state mv = newstate
+=======
 move state mv
   | validTurn mv state = newstate
   | otherwise = state
+>>>>>>> 26c33685eb459f908c83aad7f8827d4b203a4e2c
   where
     MakeMove (x, y) = mv
     newstate = state {playerList = (current {pos = (x, y)}):others}
     (current:others) = playerList state
 
+<<<<<<< HEAD
 -- | Get all possible moves
+=======
+-- | Get all possible move
+>>>>>>> 26c33685eb459f908c83aad7f8827d4b203a4e2c
 validMoves :: GameState -> [Turn]
 validMoves state = filter (\a -> validTurn a state) allMoves
   where
@@ -193,6 +229,7 @@ playersCanReachGoal state = all (playerCanReachGoal state) (playerList state)
 -- | Check if player can reach final state
 playerCanReachGoal :: GameState -> Player -> Bool
 playerCanReachGoal state player =
+<<<<<<< HEAD
   let s = runAStar next cost heuristic won state
     in case end s of
       Nothing -> False
@@ -202,6 +239,13 @@ playerCanReachGoal state player =
         cost _ _ = 1
         heuristic state = 0
         won = isWinner . currentPlayer
+=======
+                  case path of
+                      Just _ -> True
+                      Nothing -> False
+                    where
+                      path = getShortestPath (giveTurn state player)
+>>>>>>> 26c33685eb459f908c83aad7f8827d4b203a4e2c
 
 playerCanReachGoalOld state player = dfs [] (pos player)
   where
@@ -241,6 +285,7 @@ getShortestPath :: GameState -> Maybe [GameState]
 getShortestPath start = aStar next cost heuristic won start
         where
           next a = fromList (map (move a) (validMoves a))
+<<<<<<< HEAD
           cost _ _ = 1
           heuristic state = 0
 
@@ -249,10 +294,17 @@ getShortestPath start = aStar next cost heuristic won start
 -- |Winner in this game state, if there is one.
 winner :: GameState -> Maybe Player
 winner state = find isWinner (playerList state)
+=======
+          -- | Constant cost
+          cost _ _ = 1
+          heuristic _ = 100 -- | distance to
+          won = isWinner . currentPlayer
+>>>>>>> 26c33685eb459f908c83aad7f8827d4b203a4e2c
 
 defaultWalls :: Int
 defaultWalls = 5
 
+<<<<<<< HEAD
 -- |Initial state for a 2-player game,
 -- where the second is an AI algorithm with a given depth.
 initialStateAi :: Int -> GameState
@@ -274,3 +326,20 @@ initialState playerCount = GameState
   }
   where
     initPlayer c p i = Player { pcolor = c, pos = p, wallsLeft = defaultWalls, inteligence = i}
+=======
+initPlayer :: PlayerColor -> Cell -> Player
+initPlayer c p = Player { pcolor = c, pos = p, wallsLeft = defaultWalls}
+
+players :: [Player]
+players =
+  [initPlayer Green (0,4)
+   , initPlayer Yellow (8,4)
+   , initPlayer Red (4,0)
+   , initPlayer Orange (4,8)]
+
+initialState :: Int -> GameState
+initialState playerCount = GameState
+  { playerList = take playerCount players
+  , walls = []
+  , winner = Nothing }
+>>>>>>> 26c33685eb459f908c83aad7f8827d4b203a4e2c

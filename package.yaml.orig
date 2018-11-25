@@ -29,11 +29,14 @@ dependencies:
 - unordered-containers
 - hashable
 - astar
+<<<<<<< HEAD
 - psqueues
 - parallel
+=======
 - network
 - containers
-- bytestring
+- bytestring 
+>>>>>>> 26c33685eb459f908c83aad7f8827d4b203a4e2c
 
 library:
   source-dirs: src

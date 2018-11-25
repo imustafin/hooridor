@@ -1,5 +1,5 @@
 module Hooridor where
-
+<<<<<<< HEAD
 import Hooridor.Gui
 import Hooridor.Core
 import Hooridor.Ai
@@ -9,3 +9,7 @@ run = runGui
 
 testAI :: IO()
 testAI = putStrLn (show (aiPlayer 2 (initialStateAi 2)))
+=======
+import Hooridor.Gui (runGui)
+
+>>>>>>> 26c33685eb459f908c83aad7f8827d4b203a4e2c
