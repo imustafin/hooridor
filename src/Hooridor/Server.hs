@@ -31,7 +31,7 @@ consume player sock channel config = do
         Left _ -> pure ()
         Right message -> do
           currentState <- readTVarIO config
-          if samePlayer (last (take player players)) (currentPlayer currentState) then
+          if samePlayer (last (take player humanPlayerTemplates)) (currentPlayer currentState) then
             atomically $ modifyTVar config (takeTurn (read (BS.unpack message))) else
             atomically $ writeTVar config currentState
           newState <- readTVarIO config

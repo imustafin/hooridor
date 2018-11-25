@@ -17,7 +17,7 @@ instance Hashable PlayerColor
 data Inteligence
   = AI Int -- ^AI algorithm with this depth
   | Human  -- ^Human controls from GUI
-  deriving (Eq,Show,Ord)
+  deriving (Eq, Show, Ord, Read)
 
 data Player = Player
   { pcolor      :: PlayerColor
@@ -263,14 +263,26 @@ initialStateAi depth = withAi
     players = [first, second {inteligence = AI depth}]
     withAi = normalState {playerList = players}
 
+-- |Players created at their initial positions. Other functions
+-- can use these players to initiate game states.
+humanPlayerTemplates :: [Player]
+humanPlayerTemplates
+  = [ (initPlayer Green (0,4)) Human
+    , (initPlayer Yellow (8,4)) Human
+    , (initPlayer Red (4,0)) Human
+    , (initPlayer Orange (4,8)) Human ]
+  where
+    initPlayer c p i = Player
+      { pcolor = c
+      , pos = p
+      , wallsLeft = defaultWalls
+      , inteligence = i }
+
+
+
 initialState :: Int -> GameState
 initialState playerCount = GameState
-  { playerList = take playerCount
-      [ (initPlayer Green (0,4)) Human
-      , (initPlayer Yellow (8,4)) Human
-      , (initPlayer Red (4,0)) Human
-      , (initPlayer Orange (4,8)) Human]
+  { playerList = take playerCount humanPlayerTemplates
   , walls = []
   }
   where
-    initPlayer c p i = Player { pcolor = c, pos = p, wallsLeft = defaultWalls, inteligence = i}

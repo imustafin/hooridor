@@ -2,7 +2,6 @@ module Hooridor.Gui where
 
 import Graphics.Gloss
 import Graphics.Gloss.Interface.Pure.Game
-<<<<<<< HEAD
 import Hooridor.Core
 import Hooridor.Gui.GameModeMenu
 import Hooridor.Ai

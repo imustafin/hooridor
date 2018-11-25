@@ -12,6 +12,7 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as BS
 import Network.Socket hiding (recv)
 import Network.Socket.ByteString (recv, sendAll)
+import Hooridor.Gui.GameModeMenu
 
 data Message = Message {userId:: Int, message:: GameState} deriving (Read)
 
@@ -34,7 +35,7 @@ withHandler
 withHandler channel f evt@(EventKey (MouseButton _) Down _ (x', y')) c@(ClientState universe cidVar) = do
   cid <- readTVarIO cidVar
   gs@(GuiState gameState _) <- readTVarIO universe
-  if samePlayer (last (take cid players)) (currentPlayer gameState) then
+  if samePlayer (last (take cid humanPlayerTemplates)) (currentPlayer gameState) then
       case pointingAt (x', y') of
         Just (BoardCell a) -> do
           atomically $ writeTChan channel (MakeMove a)
@@ -51,7 +52,7 @@ withHandler channel f evt@(EventKey (MouseButton _) Down _ (x', y')) c@(ClientSt
 withHandler _ f evt@(EventMotion _) c@(ClientState universe cidVar) = do
   cid <- readTVarIO cidVar
   gs@(GuiState gameState _) <- readTVarIO universe
-  if samePlayer (last (take cid players)) (currentPlayer gameState) then
+  if samePlayer (last (take cid humanPlayerTemplates)) (currentPlayer gameState) then
     atomically $ writeTVar universe (f evt gs) else
     atomically $ writeTVar universe gs
   return c
@@ -111,7 +112,7 @@ startClient :: String -> String -> IO ()
 startClient host port =  withSocketsDo $ do
   actionChannel <- atomically newTChan :: IO ActionChannel
   sock <- createSocket host port
-  universe <- newTVarIO $ initiateGame 4
+  universe <- newTVarIO $ initiateGame (LocalGame 4)
   uid <- newTVarIO 0
   let init = ClientState universe uid
   acceptSocket sock uid universe actionChannel
