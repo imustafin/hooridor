@@ -1,7 +1,7 @@
 module Hooridor.Client where
 
 import Hooridor.Core
-import Hooridor.Gui
+import Hooridor.Gui.Game
 import Graphics.Gloss
 import Graphics.Gloss.Interface.IO.Game
 import Control.Monad
@@ -12,7 +12,6 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as BS
 import Network.Socket hiding (recv)
 import Network.Socket.ByteString (recv, sendAll)
-import Hooridor.Gui.GameModeMenu
 
 data Message = Message {userId:: Int, message:: GameState} deriving (Read)
 
@@ -112,7 +111,7 @@ startClient :: String -> String -> IO ()
 startClient host port =  withSocketsDo $ do
   actionChannel <- atomically newTChan :: IO ActionChannel
   sock <- createSocket host port
-  universe <- newTVarIO $ initiateGame (LocalGame 4)
+  universe <- newTVarIO $ makeInitialGuiState (initialState 4)
   uid <- newTVarIO 0
   let init = ClientState universe uid
   acceptSocket sock uid universe actionChannel

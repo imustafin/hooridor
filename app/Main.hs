@@ -1,6 +1,6 @@
 module Main where
 
-import           Hooridor.Client
+import Hooridor.Gui
 
 main :: IO ()
-main = startClient "127.0.0.1" "4000"
+main = runGui
