@@ -5,6 +5,8 @@
 
 Hooridor is Quoridor in Haskell language
 
+![Hooridor mid-game](pics/mid_game.png)
+
 Basic rules from [Quoridor Strats](https://quoridorstrats.wordpress.com/beginners-guide-rules-and-basics/)
 
 * The game is played on a 9x9 board
